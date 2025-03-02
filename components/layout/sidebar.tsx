@@ -8,9 +8,10 @@ import {
   ChevronDown, 
   LineChart, 
   Banknote, 
-  Package, 
+  ShoppingBag, 
   Calendar,
   BadgeDollarSign,
+  Package,
   Heart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -42,8 +43,8 @@ const SidebarItem = ({
       className={cn(
         'flex items-center justify-between p-3 rounded-lg text-sm font-medium transition-colors',
         isActive
-          ? 'bg-slate-100 text-slate-900'
-          : 'hover:bg-slate-100 text-slate-700'
+          ? 'bg-pawly-light-blue dark:bg-pawly-teal text-pawly-dark-blue dark:text-white'
+          : 'hover:bg-gray-100 dark:hover:bg-pawly-teal/20 text-pawly-dark-blue dark:text-white'
       )}
     >
       <div className="flex items-center gap-3">
@@ -82,10 +83,10 @@ export function Sidebar() {
   const year = currentDate.getFullYear();
 
   return (
-    <div className="w-64 bg-white border-r border-slate-200 flex flex-col h-screen overflow-hidden">
+    <div className="w-64 bg-white dark:bg-pawly-dark-blue border-r border-slate-200 dark:border-pawly-dark-blue/80 flex flex-col h-screen overflow-hidden">
       {/* User Info */}
-      <div className="p-4 border-b border-slate-200 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600">
+      <div className="p-4 border-b border-slate-200 dark:border-pawly-dark-blue/80 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-pawly-teal flex items-center justify-center text-white">
           {users[0].avatar ? (
             <img
               src={users[0].avatar}
@@ -97,27 +98,27 @@ export function Sidebar() {
           )}
         </div>
         <div className="flex-1">
-          <h3 className="font-medium text-slate-900">{users[0].name}</h3>
+          <h3 className="font-medium text-pawly-dark-blue dark:text-white">{users[0].name}</h3>
         </div>
-        <ChevronDown className="h-5 w-5 text-slate-500" />
+        <ChevronDown className="h-5 w-5 text-pawly-dark-blue dark:text-white" />
       </div>
 
       {/* Calendar */}
-      <div className="px-3 py-4 border-b border-slate-200">
+      <div className="px-3 py-4 border-b border-slate-200 dark:border-pawly-dark-blue/80">
         <div className="flex items-center justify-between mb-3">
-          <span className="font-medium">{month} {year}</span>
+          <span className="font-medium text-pawly-dark-blue dark:text-white">{month} {year}</span>
           <div className="flex gap-1">
-            <button className="p-1 rounded hover:bg-slate-100">
+            <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-pawly-teal/20 text-pawly-dark-blue dark:text-white">
               <ChevronDown className="h-4 w-4 rotate-90" />
             </button>
-            <button className="p-1 rounded hover:bg-slate-100">
+            <button className="p-1 rounded hover:bg-slate-100 dark:hover:bg-pawly-teal/20 text-pawly-dark-blue dark:text-white">
               <ChevronDown className="h-4 w-4 -rotate-90" />
             </button>
           </div>
         </div>
         
         {/* Calendar grid */}
-        <div className="grid grid-cols-7 text-center text-xs mb-2">
+        <div className="grid grid-cols-7 text-center text-xs mb-2 text-pawly-dark-blue dark:text-gray-300">
           <span>Su</span>
           <span>Mo</span>
           <span>Tu</span>
@@ -136,8 +137,11 @@ export function Sidebar() {
                 key={i} 
                 className={cn(
                   "h-6 w-6 flex items-center justify-center rounded-full",
-                  day === currentDate.getDate() - 1 ? "bg-slate-100 text-slate-900" : 
-                  day > 0 && day <= 28 ? "hover:bg-slate-100 cursor-pointer" : "text-slate-300"
+                  day === currentDate.getDate() - 1 
+                    ? "bg-pawly-light-blue dark:bg-pawly-teal text-pawly-dark-blue dark:text-white" 
+                    : day > 0 && day <= 28 
+                      ? "hover:bg-slate-100 dark:hover:bg-pawly-teal/20 cursor-pointer text-pawly-dark-blue dark:text-white" 
+                      : "text-gray-300 dark:text-gray-600"
                 )}
               >
                 {day > 0 && day <= 31 ? day : ""}
@@ -151,86 +155,86 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
         <SidebarItem
           href="/dashboard"
-          icon={<LineChart className="h-5 w-5" />}
+          icon={<LineChart className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Dashboard"
           isActive={pathname === '/dashboard'}
         />
 
         <SidebarItem
           href="/staff"
-          icon={<Users className="h-5 w-5" />}
+          icon={<Users className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Staff"
-          isActive={pathname.includes('/dashboard/staff')}
+          isActive={pathname.includes('/staff')}
           hasSubMenu={true}
           isOpen={openMenus.staff}
           onClick={() => toggleMenu('staff')}
         />
 
         <SidebarItem
-          href="/dashboard/clients"
-          icon={<Users className="h-5 w-5" />}
+          href="/clients"
+          icon={<Users className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Clients"
-          isActive={pathname.includes('/dashboard/clients')}
+          isActive={pathname.includes('/clients')}
           hasSubMenu={true}
           isOpen={openMenus.clients}
           onClick={() => toggleMenu('clients')}
         />
 
         <SidebarItem
-          href="/dashboard/overview"
-          icon={<LineChart className="h-5 w-5" />}
+          href="/overview"
+          icon={<LineChart className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Overview"
-          isActive={pathname.includes('/dashboard/overview')}
+          isActive={pathname.includes('/overview')}
         />
 
         <SidebarItem
-          href="/dashboard/analytics"
-          icon={<LineChart className="h-5 w-5" />}
+          href="/analytics"
+          icon={<LineChart className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Analytics"
-          isActive={pathname.includes('/dashboard/analytics')}
+          isActive={pathname.includes('/analytics')}
         />
 
         <SidebarItem
-          href="/dashboard/finance"
-          icon={<Banknote className="h-5 w-5" />}
+          href="/finance"
+          icon={<Banknote className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Finance"
-          isActive={pathname.includes('/dashboard/finance')}
+          isActive={pathname.includes('/finance')}
         />
 
         <SidebarItem
-          href="/dashboard/payroll"
-          icon={<BadgeDollarSign className="h-5 w-5" />}
+          href="/payroll"
+          icon={<BadgeDollarSign className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Payroll"
-          isActive={pathname.includes('/dashboard/payroll')}
+          isActive={pathname.includes('/payroll')}
         />
 
         <SidebarItem
-          href="/dashboard/inventory"
-          icon={<Package className="h-5 w-5" />}
+          href="/inventory"
+          icon={<Package className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Inventory"
-          isActive={pathname.includes('/dashboard/inventory')}
+          isActive={pathname.includes('/inventory')}
         />
 
         <SidebarItem
           href="/online-booking"
-          icon={<Calendar className="h-5 w-5" />}
+          icon={<Calendar className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Online booking"
-          isActive={pathname.includes('/dashboard/online-booking')}
+          isActive={pathname.includes('/online-booking')}
           hasSubMenu={false}
         />
         
         <SidebarItem
-          href="/dashboard/loyalty"
-          icon={<Heart className="h-5 w-5" />}
+          href="/loyalty"
+          icon={<Heart className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
           label="Loyalty"
-          isActive={pathname.includes('/dashboard/loyalty')}
+          isActive={pathname.includes('/loyalty')}
         />
       </div>
 
       {/* User Info (bottom) */}
-      <div className="p-3 border-t border-slate-200 flex items-center justify-between text-sm">
-        <div>dmitry popov</div>
-        <div className="text-slate-500">d****1@gmail.com</div>
+      <div className="p-3 border-t border-slate-200 dark:border-pawly-dark-blue/80 flex items-center justify-between text-sm">
+        <div className="text-pawly-dark-blue dark:text-white">dmitry popov</div>
+        <div className="text-gray-500 dark:text-gray-300">d****1@gmail.com</div>
       </div>
     </div>
   );

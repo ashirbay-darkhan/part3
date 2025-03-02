@@ -42,7 +42,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-pawly-dark-blue/80 bg-white dark:bg-pawly-dark-blue flex items-center px-4 justify-between">
+    <header className="h-16 border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center px-4 justify-between">
       <div className="flex items-center">
         <Button variant="ghost" size="icon" className="md:hidden mr-2 text-pawly-dark-blue dark:text-white">
           <Menu className="h-5 w-5" />

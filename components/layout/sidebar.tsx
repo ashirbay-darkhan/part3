@@ -83,9 +83,9 @@ export function Sidebar() {
   const year = currentDate.getFullYear();
 
   return (
-    <div className="w-64 bg-white dark:bg-pawly-dark-blue border-r border-slate-200 dark:border-pawly-dark-blue/80 flex flex-col h-screen overflow-hidden">
+    <div className="w-64 bg-white dark:bg-gray-900 border-r border-slate-200 dark:border-gray-800 flex flex-col h-screen overflow-hidden">
       {/* User Info */}
-      <div className="p-4 border-b border-slate-200 dark:border-pawly-dark-blue/80 flex items-center gap-3">
+      <div className="p-4 border-b border-slate-200 dark:border-gray-800 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-pawly-teal flex items-center justify-center text-white">
           {users[0].avatar ? (
             <img

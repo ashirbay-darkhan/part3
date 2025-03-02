@@ -106,23 +106,24 @@ export function WeekCalendarView() {
   };
   
   return (
-    <div className="bg-white rounded-lg border">
+    <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-800">
       {/* Calendar header with controls */}
-      <div className="p-4 border-b flex items-center justify-between">
+      <div className="p-4 border-b dark:border-gray-800 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => setSelectedDate(new Date())}
+            className="dark:border-gray-700 dark:text-white"
           >
             Today
           </Button>
           
           <div className="flex items-center">
-            <Button variant="ghost" size="icon" onClick={previousWeek}>
+            <Button variant="ghost" size="icon" onClick={previousWeek} className="dark:text-gray-300">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={nextWeek}>
+            <Button variant="ghost" size="icon" onClick={nextWeek} className="dark:text-gray-300">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>

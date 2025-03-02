@@ -47,9 +47,9 @@ export function AppointmentCard({ appointment, onClick }: AppointmentCardProps) 
         <div className={cn(`text-xs px-2 py-1 flex items-center text-white font-medium`, statusDetails.color)}>
           <span className="truncate">{appointment.startTime}-{appointment.endTime}</span>
         </div>
-        <div className="text-xs p-2 flex-1 bg-purple-100">
-          <div className="font-medium">{service?.name}</div>
-          <div className="text-slate-600 truncate">{client?.name}</div>
+        <div className="text-xs p-2 flex-1 bg-purple-100 dark:bg-purple-900">
+          <div className="font-medium dark:text-white">{service?.name}</div>
+          <div className="text-slate-600 dark:text-slate-300 truncate">{client?.name}</div>
         </div>
       </div>
       

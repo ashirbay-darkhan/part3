@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -11,8 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AppointmentCard } from './appointment-card';
-import { appointments, users } from '@/lib/dummy-data';
-import { Appointment } from '@/types';
+import { getAppointments, getUsers } from '@/lib/api';
+import { Appointment, User } from '@/types';
 
 // Utility functions for date handling
 const getDaysInWeek = (date: Date) => {
@@ -68,9 +68,32 @@ const formatDate = (date: Date) => {
 };
 
 export function WeekCalendarView() {
-  const [selectedDate, setSelectedDate] = useState(new Date(2025, 1, 24)); // Set to Feb 24, 2025
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedStaff, setSelectedStaff] = useState<string>('all');
   const [appointmentDetails, setAppointmentDetails] = useState<Appointment | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [appointmentsData, usersData] = await Promise.all([
+          getAppointments(),
+          getUsers()
+        ]);
+        setAppointments(appointmentsData);
+        setUsers(usersData);
+      } catch (error) {
+        console.error('Error fetching calendar data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
   
   const daysInWeek = useMemo(() => getDaysInWeek(selectedDate), [selectedDate]);
   const hoursOfDay = getHoursOfDay();
@@ -87,7 +110,7 @@ export function WeekCalendarView() {
       
       return appointmentDate >= weekStart && appointmentDate <= weekEnd;
     });
-  }, [selectedStaff, daysInWeek]);
+  }, [selectedStaff, daysInWeek, appointments]);
   
   const previousWeek = () => {
     const prevWeek = new Date(selectedDate);
@@ -161,56 +184,61 @@ export function WeekCalendarView() {
         </div>
       </div>
       
-      {/* Calendar grid */}
-      <div className="grid grid-cols-8 border-b">
-        {/* Time column */}
-        <div className="border-r">
-          <div className="h-16 border-b"></div> {/* Empty corner */}
-          {hoursOfDay.map((hour, index) => (
-            <div 
-              key={hour} 
-              className="h-16 flex items-start justify-end pr-2 pt-1 text-xs text-slate-500"
-            >
-              {hour.endsWith(':00') && <span>{formatHour(hour)}</span>}
+      {isLoading ? (
+        <div className="flex justify-center items-center h-96">
+          <div className="w-8 h-8 border-4 border-pawly-teal border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-8 border-b">
+          {/* Time column */}
+          <div className="border-r">
+            <div className="h-16 border-b"></div> {/* Empty corner */}
+            {hoursOfDay.map((hour, index) => (
+              <div 
+                key={hour} 
+                className="h-16 flex items-start justify-end pr-2 pt-1 text-xs text-slate-500"
+              >
+                {hour.endsWith(':00') && <span>{formatHour(hour)}</span>}
+              </div>
+            ))}
+          </div>
+          
+          {/* Days columns */}
+          {daysInWeek.map((day, dayIndex) => (
+            <div key={dayIndex} className="border-r last:border-r-0">
+              {/* Day header */}
+              <div className="h-16 border-b p-2 text-center">
+                <div className="text-sm font-medium">{getDayName(day)}</div>
+                <div className={`text-2xl mt-1 ${day.toDateString() === new Date().toDateString() ? 'bg-blue-100 text-blue-800 rounded-full w-10 h-10 flex items-center justify-center mx-auto' : ''}`}>
+                  {day.getDate()}
+                </div>
+              </div>
+              
+              {/* Hours grid with appointments */}
+              {hoursOfDay.map((hour, hourIndex) => {
+                const appointmentsInSlot = filteredAppointments.filter(apt => 
+                  isAppointmentInTimeSlot(apt, day, hour)
+                );
+                
+                return (
+                  <div 
+                    key={`${dayIndex}-${hourIndex}`}
+                    className="h-16 border-b last:border-b-0 relative"
+                  >
+                    {appointmentsInSlot.map((appointment) => (
+                      <AppointmentCard 
+                        key={appointment.id}
+                        appointment={appointment}
+                        onClick={() => handleAppointmentClick(appointment)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
-        
-        {/* Days columns */}
-        {daysInWeek.map((day, dayIndex) => (
-          <div key={dayIndex} className="border-r last:border-r-0">
-            {/* Day header */}
-            <div className="h-16 border-b p-2 text-center">
-              <div className="text-sm font-medium">{getDayName(day)}</div>
-              <div className={`text-2xl mt-1 ${day.toDateString() === new Date().toDateString() ? 'bg-blue-100 text-blue-800 rounded-full w-10 h-10 flex items-center justify-center mx-auto' : ''}`}>
-                {day.getDate()}
-              </div>
-            </div>
-            
-            {/* Hours grid with appointments */}
-            {hoursOfDay.map((hour, hourIndex) => {
-              const appointmentsInSlot = filteredAppointments.filter(apt => 
-                isAppointmentInTimeSlot(apt, day, hour)
-              );
-              
-              return (
-                <div 
-                  key={`${dayIndex}-${hourIndex}`}
-                  className="h-16 border-b last:border-b-0 relative"
-                >
-                  {appointmentsInSlot.map((appointment) => (
-                    <AppointmentCard 
-                      key={appointment.id}
-                      appointment={appointment}
-                      onClick={() => handleAppointmentClick(appointment)}
-                    />
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+      )}
     </div>
   );
 }

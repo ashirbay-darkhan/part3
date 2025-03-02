@@ -74,12 +74,12 @@ export function BookingForm({ formId }: BookingFormProps) {
         const data = await response.json();
         setFormData(data);
         
-        // Если ссылка для конкретного сотрудника, предустанавливаем его
+        // If link is for a specific employee, pre-select them
         if (data.formType === 'Employee' && data.availableEmployees.length === 1) {
           setSelectedEmployee(data.availableEmployees[0]);
         }
         
-        // Проверяем URL параметры для предварительного выбора
+        // Check URL params for pre-selection
         const serviceId = searchParams.get('service');
         const employeeId = searchParams.get('employee');
         
@@ -103,6 +103,7 @@ export function BookingForm({ formId }: BookingFormProps) {
     
     fetchFormData();
   }, [formId, searchParams]);
+  
   
   // Обработка переходов между шагами
   const goToNextStep = () => {
@@ -156,7 +157,7 @@ export function BookingForm({ formId }: BookingFormProps) {
     try {
       setIsLoading(true);
       
-      // Подготавливаем данные для отправки
+      // Prepare data for submission
       const bookingData = {
         serviceId: selectedService?.id,
         employeeId: selectedEmployee?.id,
@@ -165,7 +166,7 @@ export function BookingForm({ formId }: BookingFormProps) {
         customer: customerDetails,
       };
       
-      // Отправляем данные на сервер
+      // Send data to server
       const response = await fetch(`/api/booking-forms/${formId}`, {
         method: 'POST',
         headers: {
@@ -178,11 +179,11 @@ export function BookingForm({ formId }: BookingFormProps) {
         throw new Error('Failed to create booking');
       }
       
-      // Обрабатываем успешный ответ
+      // Handle successful response
       const result = await response.json();
       toast.success('Booking confirmed!');
       
-      // Переходим к шагу подтверждения
+      // Go to confirmation step
       goToNextStep();
       
     } catch (err) {
@@ -192,6 +193,7 @@ export function BookingForm({ formId }: BookingFormProps) {
       setIsLoading(false);
     }
   };
+  
   
   // Генерация доступных дат (следующие 7 дней)
   const getAvailableDates = () => {

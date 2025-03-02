@@ -1,4 +1,6 @@
-import { Metadata } from 'next';
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -18,15 +20,34 @@ import {
   Activity,
   Clock
 } from 'lucide-react';
-import { appointments, clients } from '@/lib/dummy-data';
-
-export const metadata: Metadata = {
-  title: 'Dashboard | B2B Booking Platform',
-  description: 'Business management dashboard',
-};
+import { getAppointments, getClients } from '@/lib/api';
+import { Appointment, Client } from '@/types';
 
 export default function DashboardPage() {
-  // Получаем сегодняшнюю дату и форматируем ее
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [appointmentsData, clientsData] = await Promise.all([
+          getAppointments(),
+          getClients()
+        ]);
+        setAppointments(appointmentsData);
+        setClients(clientsData);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
+  
+  // Get today's date and format it
   const today = new Date();
   const formattedDate = today.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -35,10 +56,50 @@ export default function DashboardPage() {
     day: 'numeric'
   });
   
-  // Считаем количество записей на сегодня
+  // Count appointments for today
   const todayAppointments = appointments.filter(
     app => new Date(app.date).toDateString() === today.toDateString()
   );
+  
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-pawly-dark-blue dark:text-white">Dashboard</h1>
+          <p className="text-slate-500 dark:text-gray-300">{formattedDate}</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium animate-pulse bg-slate-200 h-4 w-24"></CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse bg-slate-200 h-8 w-16 mb-2"></div>
+                <p className="animate-pulse bg-slate-100 h-3 w-32"></p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle className="animate-pulse bg-slate-200 h-6 w-36"></CardTitle>
+              <CardDescription className="animate-pulse bg-slate-100 h-4 w-64"></CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="animate-pulse bg-slate-200 h-10 w-48"></div>
+                  <div className="animate-pulse bg-slate-200 h-6 w-16"></div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-6">

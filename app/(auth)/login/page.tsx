@@ -22,15 +22,27 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   
+  // Update the handleSubmit function in the login page
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Симулируем задержку аутентификации
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // In a real application, this would be an actual API call
+      // For now, we'll just simulate a login
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Save authentication state (could use localStorage or a context)
+      // localStorage.setItem('isAuthenticated', 'true');
+      
+      // Redirect to dashboard
       router.push('/dashboard');
-    }, 1000);
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login failed. Please check your credentials.');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (

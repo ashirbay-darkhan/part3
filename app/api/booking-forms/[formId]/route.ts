@@ -1,43 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bookingLinks, services, users } from '@/lib/dummy-data';
+import { getBookingLinks, getServices, getUsers } from '@/lib/api';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { formId: string } }
 ) {
-  // Получаем формID из URL
-  const formId = params.formId;
-  
-  // Находим ссылку по formId
-  const link = bookingLinks.find(l => l.url.includes(formId));
-  
-  if (!link) {
+  try {
+    // Get formID from URL
+    const formId = params.formId;
+    
+    // Fetch data from JSON Server
+    const [links, services, users] = await Promise.all([
+      getBookingLinks(),
+      getServices(),
+      getUsers()
+    ]);
+    
+    // Find link by formId
+    const link = links.find(l => l.url.includes(formId));
+    
+    if (!link) {
+      return NextResponse.json(
+        { error: 'Booking form not found' },
+        { status: 404 }
+      );
+    }
+    
+    // Determine which staff members or all
+    let availableServices = services;
+    let availableEmployees = users;
+    
+    // If it's a link for a specific employee, filter
+    if (link.type === 'Employee' && link.employeeId) {
+      availableEmployees = users.filter(user => user.id === link.employeeId);
+    }
+    
+    // Compile form data
+    const formData = {
+      formId,
+      formName: link.name,
+      formType: link.type,
+      companyName: "Demo Business",
+      availableServices,
+      availableEmployees
+    };
+    
+    return NextResponse.json(formData);
+  } catch (error) {
+    console.error('Error fetching booking form data:', error);
     return NextResponse.json(
-      { error: 'Booking form not found' },
-      { status: 404 }
+      { error: 'Failed to load booking form' },
+      { status: 500 }
     );
   }
-  
-  // Определяем, для какого сотрудника или для всех
-  let availableServices = services;
-  let availableEmployees = users;
-  
-  // Если это ссылка для конкретного сотрудника, фильтруем
-  if (link.type === 'Employee' && link.employeeId) {
-    availableEmployees = users.filter(user => user.id === link.employeeId);
-  }
-  
-  // Собираем данные формы
-  const formData = {
-    formId,
-    formName: link.name,
-    formType: link.type,
-    companyName: "Demo Business",
-    availableServices,
-    availableEmployees
-  };
-  
-  return NextResponse.json(formData);
 }
 
 export async function POST(
@@ -48,13 +63,15 @@ export async function POST(
     const formId = params.formId;
     const body = await request.json();
     
-    // В реальном приложении здесь была бы валидация и сохранение в базу данных
+    // In a real app, you would save the booking to your database
+    // For now, we'll just return a success response
     
     return NextResponse.json(
       { success: true, message: 'Booking created successfully', bookingId: Math.random().toString(36).substring(2, 10) },
       { status: 201 }
     );
   } catch (error) {
+    console.error('Error creating booking:', error);
     return NextResponse.json(
       { error: 'Failed to create booking' },
       { status: 500 }

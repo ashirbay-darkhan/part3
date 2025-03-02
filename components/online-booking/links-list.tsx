@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Info, Copy, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -25,19 +25,45 @@ import {
 } from "@/components/ui/tooltip";
 import { LinkItemComponent } from './link-item';
 import { CreateLinkDialog } from './create-link-dialog';
-import { bookingLinks } from '@/lib/dummy-data';
 import { BookingLink } from '@/types';
+import { getBookingLinks, createBookingLink } from '@/lib/api';
 import { toast } from 'sonner';
 
 export function LinksListComponent() {
-  const [links, setLinks] = useState<BookingLink[]>(bookingLinks);
+  const [links, setLinks] = useState<BookingLink[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createType, setCreateType] = useState<'General' | 'Employee'>('General');
   
-  const handleCreateLink = (newLink: BookingLink) => {
-    setLinks((prev) => [...prev, newLink]);
-    setIsCreateDialogOpen(false);
-    toast.success('Link created successfully');
+  useEffect(() => {
+    const fetchLinks = async () => {
+      try {
+        const data = await getBookingLinks();
+        setLinks(data);
+      } catch (error) {
+        console.error('Error fetching booking links:', error);
+        toast.error('Failed to load booking links');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchLinks();
+  }, []);
+  
+  const handleCreateLink = async (newLink: Omit<BookingLink, 'id'>) => {
+    try {
+      setIsLoading(true);
+      const createdLink = await createBookingLink(newLink);
+      setLinks((prev) => [...prev, createdLink]);
+      setIsCreateDialogOpen(false);
+      toast.success('Link created successfully');
+    } catch (error) {
+      console.error('Error creating booking link:', error);
+      toast.error('Failed to create booking link');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -103,7 +129,7 @@ export function LinksListComponent() {
               </DialogHeader>
               <CreateLinkDialog 
                 type="Employee" 
-                onCreateLink={handleCreateLink} 
+                onCreateLink={handleCreateLink}
                 onCancel={() => setIsCreateDialogOpen(false)}
               />
             </DialogContent>
@@ -116,11 +142,23 @@ export function LinksListComponent() {
           <div>Link</div>
         </div>
         
-        <div className="space-y-2">
-          {links.map((link) => (
-            <LinkItemComponent key={link.id} link={link} />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="grid grid-cols-3 items-center border rounded-md p-4 text-sm bg-white animate-pulse">
+                <div className="h-4 bg-slate-200 rounded w-24"></div>
+                <div className="h-4 bg-slate-200 rounded w-16"></div>
+                <div className="h-4 bg-slate-200 rounded w-48"></div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {links.map((link) => (
+              <LinkItemComponent key={link.id} link={link} />
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,0 +1,120 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Bobby Pin",
+      "role": "Admin",
+      "avatar": "/avatars/bobby.png"
+    },
+    {
+      "id": "2",
+      "name": "Lorem Ipsum",
+      "role": "Stylist",
+      "avatar": "/avatars/lorem.png"
+    }
+  ],
+  "bookingLinks": [
+    {
+      "id": "1",
+      "name": "Company form",
+      "type": "Main",
+      "url": "n774813.alteg.io"
+    },
+    {
+      "id": "2",
+      "name": "Online Booking",
+      "type": "General",
+      "url": "n804474.alteg.io"
+    },
+    {
+      "id": "3",
+      "name": "Bobby Pin",
+      "type": "Employee",
+      "url": "n826237.alteg.io",
+      "employeeId": "1"
+    },
+    {
+      "id": "2adb",
+      "name": "asd",
+      "type": "General",
+      "url": "n498554.alteg.io"
+    },
+    {
+      "id": "72e4",
+      "name": "asdasd",
+      "type": "Employee",
+      "url": "n335522.alteg.io",
+      "employeeId": "1"
+    }
+  ],
+  "services": [
+    {
+      "id": "1",
+      "name": "Haircut",
+      "duration": 60,
+      "price": 2000,
+      "description": "Classic haircut"
+    },
+    {
+      "id": "2",
+      "name": "Hair coloring",
+      "duration": 120,
+      "price": 5000,
+      "description": "Full hair coloring"
+    },
+    {
+      "id": "3",
+      "name": "Styling",
+      "duration": 30,
+      "price": 1500,
+      "description": "Hair styling"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "1",
+      "clientId": "1",
+      "employeeId": "2",
+      "serviceId": "1",
+      "date": "2025-02-25",
+      "startTime": "12:00",
+      "endTime": "13:00",
+      "duration": 60,
+      "status": "Pending",
+      "price": 2000,
+      "comment": "asdas"
+    },
+    {
+      "id": "2",
+      "clientId": "2",
+      "employeeId": "1",
+      "serviceId": "2",
+      "date": "2025-03-03",
+      "startTime": "15:00",
+      "endTime": "17:00",
+      "duration": 120,
+      "status": "Confirmed",
+      "price": 5000
+    }
+  ],
+  "clients": [
+    {
+      "id": "1",
+      "name": "asdasd",
+      "phone": "+7 123 123-13-23",
+      "email": "asdas@gmail.com",
+      "totalVisits": 1,
+      "lastVisit": "2025-02-25T12:00:00",
+      "notes": "-"
+    },
+    {
+      "id": "2",
+      "name": "Jane Smith",
+      "phone": "+7 987 654-32-10",
+      "email": "jane@example.com",
+      "totalVisits": 5,
+      "lastVisit": "2025-02-20T14:30:00",
+      "notes": "Prefers natural dyes"
+    }
+  ]
+}

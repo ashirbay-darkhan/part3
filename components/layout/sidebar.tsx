@@ -14,6 +14,7 @@ import {
   Package,
   Heart
 } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar-fallback';
 import { cn } from '@/lib/utils';
 import { users } from '@/lib/dummy-data';
 
@@ -86,17 +87,11 @@ export function Sidebar() {
     <div className="w-64 bg-white dark:bg-gray-900 border-r border-slate-200 dark:border-gray-800 flex flex-col h-screen overflow-hidden">
       {/* User Info */}
       <div className="p-4 border-b border-slate-200 dark:border-gray-800 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-pawly-teal flex items-center justify-center text-white">
-          {users[0].avatar ? (
-            <img
-              src={users[0].avatar}
-              alt={users[0].name}
-              className="w-full h-full rounded-full"
-            />
-          ) : (
-            <span>{users[0].name.charAt(0)}</span>
-          )}
-        </div>
+        <Avatar 
+          src={users[0].avatar} 
+          name={users[0].name} 
+          className="w-10 h-10" 
+        />
         <div className="flex-1">
           <h3 className="font-medium text-pawly-dark-blue dark:text-white">{users[0].name}</h3>
         </div>

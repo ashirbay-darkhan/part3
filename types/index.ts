@@ -46,3 +46,43 @@ export type Client = {
   lastVisit?: string; // ISO формат
   notes?: string;
 };
+
+// Business type
+export type Business = {
+  id: string;
+  name: string;
+  ownerId: string; // Reference to the user who owns the business
+  email: string;
+  phone?: string;
+  address?: string;
+  logo?: string;
+  website?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Extended user type
+export type BusinessUser = User & {
+  businessId: string;
+  businessName: string;
+  email: string;
+  role: 'admin' | 'staff';
+  isVerified: boolean;
+};
+
+// Extend existing types with business ownership
+export type BusinessService = Service & {
+  businessId: string;
+};
+
+export type BusinessBookingLink = BookingLink & {
+  businessId: string;
+};
+
+export type BusinessAppointment = Appointment & {
+  businessId: string;
+};
+
+export type BusinessClient = Client & {
+  businessId: string;
+};

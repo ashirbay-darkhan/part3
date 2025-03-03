@@ -2,27 +2,6 @@ import { User, BookingLink, Service, Appointment, Client, AppointmentStatus } fr
 
 const API_URL = 'http://localhost:3001';
 
-// Generic fetch function with error handling
-async function fetchAPI<T>(
-  endpoint: string, 
-  options?: RequestInit
-): Promise<T> {
-  const url = `${API_URL}/${endpoint}`;
-  
-  try {
-    const response = await fetch(url, options);
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`Error fetching from ${endpoint}:`, error);
-    throw error;
-  }
-}
-
 // Users
 export const getUsers = () => fetchAPI<User[]>('users');
 export const getUser = (id: string) => fetchAPI<User>(`users/${id}`);
@@ -134,3 +113,107 @@ export function getStatusDetails(status: AppointmentStatus) {
       return { color: 'bg-gray-500', text: 'Unknown' };
   }
 }
+
+// Get the auth token
+const getAuthToken = () => localStorage.getItem('auth_token');
+
+// Function to get business ID
+const getBusinessId = () => {
+  try {
+    const user = localStorage.getItem('currentUser');
+    if (!user) return null;
+    return JSON.parse(user).businessId;
+  } catch (error) {
+    console.error('Error getting business ID:', error);
+    return null;
+  }
+};
+
+// Updated fetchAPI to include businessId in routes
+async function fetchAPI<T>(
+  endpoint: string, 
+  options?: RequestInit
+): Promise<T> {
+  const url = `${API_URL}/${endpoint}`;
+  const token = getAuthToken();
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options?.headers || {}),
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Error fetching from ${endpoint}:`, error);
+    throw error;
+  }
+}
+
+// Business-specific API functions
+export const getBusinessServices = async () => {
+  const businessId = getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<Service[]>(`services?businessId=${businessId}`);
+};
+
+export const createBusinessService = async (service: Omit<Service, 'id' | 'businessId'>) => {
+  const businessId = getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<Service>('services', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...service, businessId })
+  });
+};
+
+export const getBusinessBookingLinks = async () => {
+  const businessId = getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<BookingLink[]>(`bookingLinks?businessId=${businessId}`);
+};
+
+export const createBusinessBookingLink = async (link: Omit<BookingLink, 'id' | 'businessId'>) => {
+  const businessId = getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<BookingLink>('bookingLinks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...link, businessId })
+  });
+};
+
+export const getBusinessAppointments = async () => {
+  const businessId = getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<Appointment[]>(`appointments?businessId=${businessId}`);
+};
+
+export const getBusinessClients = async () => {
+  const businessId = getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<Client[]>(`clients?businessId=${businessId}`);
+};
+
+export const getBusinessStaff = async () => {
+  const businessId = getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<User[]>(`users?businessId=${businessId}&role=staff`);
+};

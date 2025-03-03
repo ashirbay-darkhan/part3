@@ -20,32 +20,39 @@ import {
   Activity,
   Clock
 } from 'lucide-react';
-import { getAppointments, getClients } from '@/lib/api';
+import { getBusinessAppointments, getBusinessClients } from '@/lib/api';
 import { Appointment, Client } from '@/types';
+import { useAuth } from '@/lib/auth/authContext';
+import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
   
   useEffect(() => {
     const fetchData = async () => {
+      if (!user) return;
+      
       try {
+        setIsLoading(true);
         const [appointmentsData, clientsData] = await Promise.all([
-          getAppointments(),
-          getClients()
+          getBusinessAppointments(user.businessId),
+          getBusinessClients(user.businessId)
         ]);
         setAppointments(appointmentsData);
         setClients(clientsData);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
+        toast.error('Failed to load dashboard data');
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchData();
-  }, []);
+  }, [user]);
   
   // Get today's date and format it
   const today = new Date();

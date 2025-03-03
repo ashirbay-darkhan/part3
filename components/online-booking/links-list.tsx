@@ -26,7 +26,8 @@ import {
 import { LinkItemComponent } from './link-item';
 import { CreateLinkDialog } from './create-link-dialog';
 import { BookingLink } from '@/types';
-import { getBookingLinks, createBookingLink } from '@/lib/api';
+import { getBusinessBookingLinks, createBusinessBookingLink } from '@/lib/api';
+import { useAuth } from '@/lib/auth/authContext';
 import { toast } from 'sonner';
 
 export function LinksListComponent() {
@@ -34,11 +35,15 @@ export function LinksListComponent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createType, setCreateType] = useState<'General' | 'Employee'>('General');
+  const { user } = useAuth();
   
   useEffect(() => {
     const fetchLinks = async () => {
+      if (!user) return;
+      
       try {
-        const data = await getBookingLinks();
+        setIsLoading(true);
+        const data = await getBusinessBookingLinks(user.businessId);
         setLinks(data);
       } catch (error) {
         console.error('Error fetching booking links:', error);
@@ -49,12 +54,14 @@ export function LinksListComponent() {
     };
     
     fetchLinks();
-  }, []);
+  }, [user]);
   
   const handleCreateLink = async (newLink: Omit<BookingLink, 'id'>) => {
+    if (!user) return;
+    
     try {
       setIsLoading(true);
-      const createdLink = await createBookingLink(newLink);
+      const createdLink = await createBusinessBookingLink(user.businessId, newLink);
       setLinks((prev) => [...prev, createdLink]);
       setIsCreateDialogOpen(false);
       toast.success('Link created successfully');

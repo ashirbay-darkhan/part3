@@ -3,48 +3,30 @@
     {
       "id": "1",
       "name": "Bobby Pin",
-      "role": "Admin",
-      "avatar": "/avatars/bobby.png"
+      "email": "admin@example.com",
+      "password": "password123",
+      "role": "admin",
+      "businessId": "1",
+      "businessName": "Bobby's Salon",
+      "isVerified": true
     },
     {
       "id": "2",
       "name": "Lorem Ipsum",
-      "role": "Stylist",
-      "avatar": "/avatars/lorem.png"
+      "email": "staff@example.com",
+      "password": "password123",
+      "role": "staff",
+      "businessId": "1",
+      "businessName": "Bobby's Salon",
+      "isVerified": true
     }
   ],
-  "bookingLinks": [
+  "businesses": [
     {
       "id": "1",
-      "name": "Company form",
-      "type": "Main",
-      "url": "n774813.alteg.io"
-    },
-    {
-      "id": "2",
-      "name": "Online Booking",
-      "type": "General",
-      "url": "n804474.alteg.io"
-    },
-    {
-      "id": "3",
-      "name": "Bobby Pin",
-      "type": "Employee",
-      "url": "n826237.alteg.io",
-      "employeeId": "1"
-    },
-    {
-      "id": "2adb",
-      "name": "asd",
-      "type": "General",
-      "url": "n498554.alteg.io"
-    },
-    {
-      "id": "72e4",
-      "name": "asdasd",
-      "type": "Employee",
-      "url": "n335522.alteg.io",
-      "employeeId": "1"
+      "name": "Bobby's Salon",
+      "ownerId": "1",
+      "email": "admin@example.com"
     }
   ],
   "services": [
@@ -53,21 +35,48 @@
       "name": "Haircut",
       "duration": 60,
       "price": 2000,
-      "description": "Classic haircut"
+      "description": "Classic haircut",
+      "businessId": "1"
     },
     {
       "id": "2",
       "name": "Hair coloring",
       "duration": 120,
       "price": 5000,
-      "description": "Full hair coloring"
+      "description": "Full hair coloring",
+      "businessId": "1"
     },
     {
       "id": "3",
       "name": "Styling",
       "duration": 30,
       "price": 1500,
-      "description": "Hair styling"
+      "description": "Hair styling",
+      "businessId": "1"
+    }
+  ],
+  "bookingLinks": [
+    {
+      "id": "1",
+      "name": "Company form",
+      "type": "Main",
+      "url": "n774813.alteg.io",
+      "businessId": "1"
+    },
+    {
+      "id": "2",
+      "name": "Online Booking",
+      "type": "General",
+      "url": "n804474.alteg.io",
+      "businessId": "1"
+    },
+    {
+      "id": "3",
+      "name": "Bobby Pin",
+      "type": "Employee",
+      "url": "n826237.alteg.io",
+      "employeeId": "1",
+      "businessId": "1"
     }
   ],
   "appointments": [
@@ -82,7 +91,8 @@
       "duration": 60,
       "status": "Pending",
       "price": 2000,
-      "comment": "asdas"
+      "comment": "asdas",
+      "businessId": "1"
     },
     {
       "id": "2",
@@ -94,7 +104,8 @@
       "endTime": "17:00",
       "duration": 120,
       "status": "Confirmed",
-      "price": 5000
+      "price": 5000,
+      "businessId": "1"
     }
   ],
   "clients": [
@@ -105,7 +116,8 @@
       "email": "asdas@gmail.com",
       "totalVisits": 1,
       "lastVisit": "2025-02-25T12:00:00",
-      "notes": "-"
+      "notes": "-",
+      "businessId": "1"
     },
     {
       "id": "2",
@@ -114,7 +126,8 @@
       "email": "jane@example.com",
       "totalVisits": 5,
       "lastVisit": "2025-02-20T14:30:00",
-      "notes": "Prefers natural dyes"
+      "notes": "Prefers natural dyes",
+      "businessId": "1"
     }
   ]
 }

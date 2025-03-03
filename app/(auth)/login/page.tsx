@@ -15,27 +15,24 @@ import {
   CardTitle,
   CardDescription 
 } from '@/components/ui/card';
+import { useAuth } from '@/lib/auth/authContext';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
   
-  // Update the handleSubmit function in the login page
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // In a real application, this would be an actual API call
-      // For now, we'll just simulate a login
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Save authentication state (could use localStorage or a context)
-      // localStorage.setItem('isAuthenticated', 'true');
-      
-      // Redirect to dashboard
+      // Try with our default admin credentials
+      await login(email, password);
+      toast.success('Login successful!');
       router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
@@ -89,11 +86,23 @@ export default function LoginPage() {
             <Checkbox id="remember" />
             <Label htmlFor="remember" className="text-sm">Remember me</Label>
           </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            <p>Demo credentials:</p>
+            <p>Email: admin@example.com</p>
+            <p>Password: password123</p>
+          </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col space-y-4">
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>
+          
+          <p className="text-sm text-center">
+            Don't have an account?{' '}
+            <Link href="/register" className="text-blue-500 hover:underline">
+              Sign up
+            </Link>
+          </p>
         </CardFooter>
       </form>
     </Card>

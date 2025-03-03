@@ -34,8 +34,10 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "bcryptjs": "^3.0.2",
     "concurrently": "^9.1.2",
     "json-server": "^1.0.0-beta.3",
+    "jsonwebtoken": "^9.0.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

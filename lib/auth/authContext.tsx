@@ -41,39 +41,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Login function
-  const login = async (email: string, password: string) => {
+  // Replace the login function with this:
+// Replace the login function with this:
+const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const userData = await loginService(email, password);
-      setUser(userData);
+        const userData = await loginService(email, password);
+        setUser(userData);
+        return userData;
     } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+        console.error('Login error:', error);
+        throw error;
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
 
-  // Register function
-  const register = async (userData: { name: string, email: string, password: string, businessName: string }) => {
+// Replace the register function with this:
+const register = async (userData: { name: string, email: string, password: string, businessName: string }) => {
     setIsLoading(true);
     try {
-      const newUser = await registerService(userData);
-      setUser(newUser);
+        const newUser = await registerService(userData);
+        setUser(newUser);
+        return newUser;
     } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+        console.error('Registration error:', error);
+        throw error;
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
 
-  // Logout function
-  const logout = () => {
+// Replace the logout function with this:
+const logout = () => {
     logoutService();
     setUser(null);
     router.push('/login');
-  };
+};
 
   const value = {
     user,

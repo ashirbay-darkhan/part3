@@ -1,33 +1,35 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Menu, Search, Bell, Moon, Sun } from 'lucide-react';
+import { Menu, Search, Bell, Moon, Sun, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/lib/auth/authContext';
 
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const { user } = useAuth();
 
-  // Функция для переключения темы
+  // Function to toggle theme
   const toggleTheme = () => {
     const newDarkMode = !darkMode;
     setDarkMode(newDarkMode);
     
-    // Добавляем или удаляем класс .dark из html
+    // Add or remove the dark class from html
     if (newDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
     
-    // Опционально, сохраняем настройку в localStorage
+    // Optionally, save the setting in localStorage
     localStorage.setItem('darkMode', newDarkMode ? 'true' : 'false');
   };
 
-  // При монтировании компонента проверяем сохраненную тему
+  // When mounting the component, check saved theme
   useEffect(() => {
-    // Проверка предпочтений системы, если нет сохраненных настроек
+    // Check system preferences if no saved settings
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     const savedDarkMode = localStorage.getItem('darkMode') === 'true' || 
                          (localStorage.getItem('darkMode') === null && prefersDark);
@@ -72,7 +74,7 @@ export function Header() {
       </div>
       
       <div className="flex items-center gap-2">
-        {/* Кнопка переключения темы */}
+        {/* Theme toggle button */}
         <Button 
           variant="ghost" 
           size="icon" 
@@ -92,7 +94,9 @@ export function Header() {
         </Button>
         
         <div className="h-8 w-8 rounded-full bg-pawly-teal flex items-center justify-center">
-          <span className="text-sm font-medium text-white">BP</span>
+          <span className="text-sm font-medium text-white">
+            {user?.name?.charAt(0) || 'U'}
+          </span>
         </div>
       </div>
     </header>

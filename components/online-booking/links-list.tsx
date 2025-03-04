@@ -150,21 +150,21 @@ export function LinksListComponent() {
         </div>
         
         {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="grid grid-cols-3 items-center border rounded-md p-4 text-sm bg-white animate-pulse">
-                <div className="h-4 bg-slate-200 rounded w-24"></div>
-                <div className="h-4 bg-slate-200 rounded w-16"></div>
-                <div className="h-4 bg-slate-200 rounded w-48"></div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {links.map((link) => (
-              <LinkItemComponent key={link.id} link={link} />
-            ))}
-          </div>
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="grid grid-cols-3 items-center border rounded-md p-4 text-sm bg-white animate-pulse">
+                  <div className="h-4 bg-slate-200 rounded w-24"></div>
+                  <div className="h-4 bg-slate-200 rounded w-16"></div>
+                  <div className="h-4 bg-slate-200 rounded w-48"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {links.map((link) => (
+                <LinkItemComponent key={link.id} link={link} />
+              ))}
+            </div>
         )}
       </CardContent>
     </Card>

@@ -216,7 +216,7 @@ export default function DashboardPage() {
           </CardContent>
           <CardFooter>
             <Button variant="ghost" className="w-full" asChild>
-              <Link href="/dashboard/staff">
+              <Link href="/staff">
                 View all
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -234,13 +234,13 @@ export default function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <Button variant="outline" className="h-24 flex flex-col" asChild>
-                <Link href="/dashboard/online-booking">
+                <Link href="/online-booking">
                   <Calendar className="h-6 w-6 mb-2" />
                   <span>Manage Booking Links</span>
                 </Link>
               </Button>
               <Button variant="outline" className="h-24 flex flex-col" asChild>
-                <Link href="/dashboard/staff">
+                <Link href="/staff">
                   <Users className="h-6 w-6 mb-2" />
                   <span>View Calendar</span>
                 </Link>

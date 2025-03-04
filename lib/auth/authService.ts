@@ -1,56 +1,43 @@
-// Simple client-side authentication service
+// lib/auth/authService.ts
 
-export interface BusinessUser {
-    id: string;
-    name: string;
-    email: string;
-    businessId: string;
-    businessName: string;
-    role: 'admin' | 'staff';
-    isVerified: boolean;
-  }
-  
-  // Login with email/password
-  export const login = async (email: string, password: string): Promise<BusinessUser> => {
+import { BusinessUser } from '@/types';
+
+// Login with email/password
+export const login = async (email: string, password: string): Promise<BusinessUser> => {
+  try {
+    console.log('Attempting to login with:', email);
+    
+    // Try to fetch from JSON server
+    const response = await fetch(`http://localhost:3001/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Invalid credentials');
+    }
+    
+    const data = await response.json();
+    const userData = data.user;
+    
+    // Store user in localStorage for session persistence
+    localStorage.setItem('currentUser', JSON.stringify(userData));
+    localStorage.setItem('auth_token', data.token || userData.id);
+    
+    // Set a cookie for middleware authentication
+    document.cookie = `auth_token=${data.token || userData.id}; path=/; max-age=2592000`; // 30 days
+    
+    return userData;
+  } catch (error) {
+    console.error('Login error:', error);
+    
+    // If we get a network error, check if we can use JSON server directly
     try {
-      console.log('Attempting to login with:', email);
-      
-      // Try direct access to known data first for development fallback
-      if (email === 'admin@example.com' && password === 'password123') {
-        console.log('Using development fallback login');
-        
-        // Create a fallback user when JSON server is unavailable
-        const fallbackUser = {
-          id: '1',
-          name: 'Admin User',
-          email: 'admin@example.com',
-          businessId: '1',
-          businessName: 'Demo Business',
-          role: 'admin' as const,
-          isVerified: true
-        };
-        
-        // Store user in localStorage for session persistence
-        localStorage.setItem('currentUser', JSON.stringify(fallbackUser));
-        
-        // Set a cookie for middleware authentication
-        document.cookie = `auth_token=${fallbackUser.id}; path=/; max-age=2592000`; // 30 days
-        
-        return fallbackUser;
-      }
-      
-      // Try to fetch from JSON server first
-      console.log('Fetching from server:', `http://localhost:3001/users?email=${email}`);
-      const response = await fetch(`http://localhost:3001/users?email=${email}`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('Response status:', response.status);
-      const users = await response.json();
-      console.log('Users found:', users);
+      const userResponse = await fetch(`http://localhost:3001/users?email=${email}`);
+      const users = await userResponse.json();
       
       if (users.length === 0) {
         throw new Error('User not found');
@@ -68,145 +55,153 @@ export interface BusinessUser {
       
       // Store user in localStorage for session persistence
       localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
+      localStorage.setItem('auth_token', userWithoutPassword.id);
       
       // Set a cookie for middleware authentication
       document.cookie = `auth_token=${userWithoutPassword.id}; path=/; max-age=2592000`; // 30 days
       
       return userWithoutPassword;
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (secondaryError) {
+      console.error('Secondary login attempt failed:', secondaryError);
+      throw error; // Throw the original error
+    }
+  }
+};
+
+// Register new user
+export const register = async (userData: {
+  name: string;
+  email: string;
+  password: string;
+  businessName: string;
+}): Promise<BusinessUser> => {
+  try {
+    // Try to register via POST endpoint first
+    try {
+      const response = await fetch('http://localhost:3001/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
       
-      // If we get a network error and the credentials match our hardcoded ones, use fallback
-      if (email === 'admin@example.com' && password === 'password123') {
-        console.log('Failed to connect to server, using development fallback');
+      if (response.ok) {
+        const data = await response.json();
         
-        // Create a fallback user when JSON server is unavailable
-        const fallbackUser = {
-          id: '1',
-          name: 'Admin User',
-          email: 'admin@example.com',
-          businessId: '1',
-          businessName: 'Demo Business',
-          role: 'admin' as const,
-          isVerified: true
-        };
-        
-        // Store user in localStorage for session persistence
-        localStorage.setItem('currentUser', JSON.stringify(fallbackUser));
+        // Store user in localStorage
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        localStorage.setItem('auth_token', data.token || data.user.id);
         
         // Set a cookie for middleware authentication
-        document.cookie = `auth_token=${fallbackUser.id}; path=/; max-age=2592000`; // 30 days
+        document.cookie = `auth_token=${data.token || data.user.id}; path=/; max-age=2592000`; // 30 days
         
-        return fallbackUser;
+        return data.user;
       }
-      
-      throw error;
+    } catch (registerEndpointError) {
+      console.log('Register endpoint not available, using direct API calls');
     }
-  };
-  
-  // Register new user
-  export const register = async (userData: {
-    name: string;
-    email: string;
-    password: string;
-    businessName: string;
-  }): Promise<BusinessUser> => {
-    try {
-      // Check if email already exists
-      const checkResponse = await fetch(`http://localhost:3001/users?email=${userData.email}`);
-      const existingUsers = await checkResponse.json();
-      
-      if (existingUsers.length > 0) {
-        throw new Error('Email already in use');
-      }
-      
-      // Create a new business ID
-      const businessId = Date.now().toString();
-      
-      // Create new business
-      const businessResponse = await fetch('http://localhost:3001/businesses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: businessId,
-          name: userData.businessName,
-          email: userData.email,
-          ownerId: null // We'll update this after creating the user
-        })
-      });
-      
-      if (!businessResponse.ok) {
-        throw new Error('Failed to create business');
-      }
-      
-      // Create new user
-      const newUser = {
-        id: Date.now().toString(),
-        name: userData.name,
+    
+    // Fallback to direct API manipulation
+    // Check if email already exists
+    const checkResponse = await fetch(`http://localhost:3001/users?email=${userData.email}`);
+    const existingUsers = await checkResponse.json();
+    
+    if (existingUsers.length > 0) {
+      throw new Error('Email already in use');
+    }
+    
+    // Create a new business ID
+    const businessId = Date.now().toString();
+    
+    // Create new business
+    const businessResponse = await fetch('http://localhost:3001/businesses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        id: businessId,
+        name: userData.businessName,
         email: userData.email,
-        password: userData.password, // In a real app, hash this!
-        businessId,
-        businessName: userData.businessName,
-        role: 'admin',
-        isVerified: true
-      };
-      
-      const userResponse = await fetch('http://localhost:3001/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newUser)
-      });
-      
-      if (!userResponse.ok) {
-        throw new Error('Failed to create user');
-      }
-      
-      const createdUser = await userResponse.json();
-      
-      // Update business with owner ID
-      await fetch(`http://localhost:3001/businesses/${businessId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ownerId: createdUser.id
-        })
-      });
-      
-      // Remove password before returning
-      const { password: _, ...userWithoutPassword } = createdUser;
-      
-      // Store user in localStorage
-      localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-      
-      // Set a cookie for middleware authentication
-      document.cookie = `auth_token=${userWithoutPassword.id}; path=/; max-age=2592000`; // 30 days
-      
-      return userWithoutPassword;
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+        ownerId: null // We'll update this after creating the user
+      })
+    });
+    
+    if (!businessResponse.ok) {
+      throw new Error('Failed to create business');
     }
-  };
-  
-  // Get current user
-  export const getCurrentUser = (): BusinessUser | null => {
-    try {
-      const user = localStorage.getItem('currentUser');
-      return user ? JSON.parse(user) : null;
-    } catch (error) {
-      console.error('Error getting current user:', error);
-      return null;
+    
+    // Create new user
+    const newUser = {
+      id: Date.now().toString(),
+      name: userData.name,
+      email: userData.email,
+      password: userData.password, // In a real app, hash this!
+      businessId,
+      businessName: userData.businessName,
+      role: 'admin',
+      isVerified: true
+    };
+    
+    const userResponse = await fetch('http://localhost:3001/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newUser)
+    });
+    
+    if (!userResponse.ok) {
+      throw new Error('Failed to create user');
     }
-  };
-  
-  // Logout
-  export const logout = () => {
-    localStorage.removeItem('currentUser');
-    document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-  };
+    
+    const createdUser = await userResponse.json();
+    
+    // Update business with owner ID
+    await fetch(`http://localhost:3001/businesses/${businessId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        ownerId: createdUser.id
+      })
+    });
+    
+    // Remove password before returning
+    const { password: _, ...userWithoutPassword } = createdUser;
+    
+    // Store user in localStorage
+    localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
+    localStorage.setItem('auth_token', userWithoutPassword.id);
+    
+    // Set a cookie for middleware authentication
+    document.cookie = `auth_token=${userWithoutPassword.id}; path=/; max-age=2592000`; // 30 days
+    
+    return userWithoutPassword;
+  } catch (error) {
+    console.error('Registration error:', error);
+    throw error;
+  }
+};
+
+// Get current user
+export const getCurrentUser = (): BusinessUser | null => {
+  try {
+    const userJson = localStorage.getItem('currentUser');
+    if (!userJson) return null;
+    
+    return JSON.parse(userJson);
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return null;
+  }
+};
+
+// Logout
+export const logout = () => {
+  localStorage.removeItem('currentUser');
+  localStorage.removeItem('auth_token');
+  document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+};

@@ -29,7 +29,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<BusinessUser | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   // Check for saved user on initial load
@@ -38,46 +38,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (savedUser) {
       setUser(savedUser);
     }
+    setIsLoading(false);
   }, []);
 
   // Login function
-  // Replace the login function with this:
-// Replace the login function with this:
-const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-        const userData = await loginService(email, password);
-        setUser(userData);
-        return userData;
+      const userData = await loginService(email, password);
+      setUser(userData);
+      return userData;
     } catch (error) {
-        console.error('Login error:', error);
-        throw error;
+      console.error('Login error:', error);
+      throw error;
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-};
+  };
 
-// Replace the register function with this:
-const register = async (userData: { name: string, email: string, password: string, businessName: string }) => {
+  // Register function
+  const register = async (userData: { name: string, email: string, password: string, businessName: string }) => {
     setIsLoading(true);
     try {
-        const newUser = await registerService(userData);
-        setUser(newUser);
-        return newUser;
+      const newUser = await registerService(userData);
+      setUser(newUser);
+      return newUser;
     } catch (error) {
-        console.error('Registration error:', error);
-        throw error;
+      console.error('Registration error:', error);
+      throw error;
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-};
+  };
 
-// Replace the logout function with this:
-const logout = () => {
+  // Logout function
+  const logout = () => {
     logoutService();
     setUser(null);
     router.push('/login');
-};
+  };
 
   const value = {
     user,

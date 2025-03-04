@@ -19,6 +19,26 @@
       "businessId": "1",
       "businessName": "Bobby's Salon",
       "isVerified": true
+    },
+    {
+      "id": "1741095291329",
+      "name": "John Doe",
+      "email": "jedi_knight314@mail.ru",
+      "password": "asdasd",
+      "businessId": "1741095291279",
+      "businessName": "Nike",
+      "role": "admin",
+      "isVerified": true
+    },
+    {
+      "id": "1741098049544",
+      "name": "Дархан",
+      "email": "darkhan.ashirbay01@gmail.com",
+      "password": "asdasdasd",
+      "businessId": "1741098049512",
+      "businessName": "Nike",
+      "role": "admin",
+      "isVerified": true
     }
   ],
   "businesses": [
@@ -27,6 +47,18 @@
       "name": "Bobby's Salon",
       "ownerId": "1",
       "email": "admin@example.com"
+    },
+    {
+      "id": "1741095291279",
+      "name": "Nike",
+      "email": "jedi_knight314@mail.ru",
+      "ownerId": "1741095291329"
+    },
+    {
+      "id": "1741098049512",
+      "name": "Nike",
+      "email": "darkhan.ashirbay01@gmail.com",
+      "ownerId": "1741098049544"
     }
   ],
   "services": [
@@ -80,8 +112,20 @@
     },
     {
       "0": "1",
-      "businessId": "1",
-      "id": "8V27I5c"
+      "1": "7",
+      "2": "4",
+      "3": "1",
+      "4": "0",
+      "5": "9",
+      "6": "8",
+      "7": "0",
+      "8": "4",
+      "9": "9",
+      "10": "5",
+      "11": "1",
+      "12": "2",
+      "businessId": "1741098049512",
+      "id": "EYghVTK"
     }
   ],
   "appointments": [

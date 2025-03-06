@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -20,39 +20,68 @@ import {
   Activity,
   Clock
 } from 'lucide-react';
-import { getBusinessAppointments, getBusinessClients } from '@/lib/api';
 import { Appointment, Client } from '@/types';
 import { useAuth } from '@/lib/auth/authContext';
 import { toast } from 'sonner';
+// Import the new hook
+import { useBusinessData } from '@/lib/hooks/useBusinessData';
+import { getBusinessAppointments, getBusinessClients } from '@/lib/api';
+
+// Lazy load components that are not immediately visible
+const WeekCalendarView = lazy(() => 
+  import('@/components/calendar/week-view').then(module => ({ 
+    default: module.WeekCalendarView 
+  }))
+);
+
+// Create a loading skeleton component
+const DashboardSkeleton = () => (
+  <div className="space-y-6">
+    <div>
+      <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-2"></div>
+      <div className="h-4 w-48 bg-gray-100 rounded animate-pulse"></div>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {[1, 2, 3, 4].map(i => (
+        <Card key={i}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium animate-pulse bg-slate-200 h-4 w-24"></CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="animate-pulse bg-slate-200 h-8 w-16 mb-2"></div>
+            <p className="animate-pulse bg-slate-100 h-3 w-32"></p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Card className="col-span-1">
+        <CardHeader>
+          <CardTitle className="animate-pulse bg-slate-200 h-6 w-36"></CardTitle>
+          <CardDescription className="animate-pulse bg-slate-100 h-4 w-64"></CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="animate-pulse bg-slate-200 h-10 w-48"></div>
+              <div className="animate-pulse bg-slate-200 h-6 w-16"></div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+);
 
 export default function DashboardPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  // Replace multiple useState and useEffect with our custom hook
+  const { data: appointments = [], isLoading: isLoadingAppointments } = 
+    useBusinessData<Appointment>(getBusinessAppointments);
   
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-      
-      try {
-        setIsLoading(true);
-        const [appointmentsData, clientsData] = await Promise.all([
-          getBusinessAppointments(user.businessId),
-          getBusinessClients(user.businessId)
-        ]);
-        setAppointments(appointmentsData);
-        setClients(clientsData);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-        toast.error('Failed to load dashboard data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [user]);
+  const { data: clients = [], isLoading: isLoadingClients } = 
+    useBusinessData<Client>(getBusinessClients);
+  
+  const isLoading = isLoadingAppointments || isLoadingClients;
   
   // Get today's date and format it
   const today = new Date();
@@ -69,43 +98,7 @@ export default function DashboardPage() {
   );
   
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-pawly-dark-blue dark:text-white">Dashboard</h1>
-          <p className="text-slate-500 dark:text-gray-300">{formattedDate}</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium animate-pulse bg-slate-200 h-4 w-24"></CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="animate-pulse bg-slate-200 h-8 w-16 mb-2"></div>
-                <p className="animate-pulse bg-slate-100 h-3 w-32"></p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="col-span-1">
-            <CardHeader>
-              <CardTitle className="animate-pulse bg-slate-200 h-6 w-36"></CardTitle>
-              <CardDescription className="animate-pulse bg-slate-100 h-4 w-64"></CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="animate-pulse bg-slate-200 h-10 w-48"></div>
-                  <div className="animate-pulse bg-slate-200 h-6 w-16"></div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
   
   return (

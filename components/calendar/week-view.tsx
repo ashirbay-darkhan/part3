@@ -130,8 +130,8 @@ export function WeekCalendarView() {
   
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-800">
-      {/* Calendar header with controls */}
-      <div className="p-4 border-b dark:border-gray-800 flex items-center justify-between">
+      {/* Calendar header with controls - adjust for mobile */}
+      <div className="p-4 border-b dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center space-x-2">
           <Button 
             variant="outline" 
@@ -151,14 +151,17 @@ export function WeekCalendarView() {
             </Button>
           </div>
           
-          <h2 className="font-semibold text-lg">
+          <h2 className="font-semibold text-lg hidden sm:block">
             {formatDate(daysInWeek[0])} - {formatDate(daysInWeek[6])}, {daysInWeek[0].getFullYear()}
+          </h2>
+          <h2 className="font-semibold text-lg sm:hidden">
+            {formatDate(daysInWeek[0]).substring(0, 3)} - {formatDate(daysInWeek[6]).substring(0, 3)}
           </h2>
         </div>
         
         <div className="flex items-center space-x-2">
           <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[120px] sm:w-[180px]">
               <SelectValue placeholder="All staff" />
             </SelectTrigger>
             <SelectContent>
@@ -171,8 +174,8 @@ export function WeekCalendarView() {
             </SelectContent>
           </Select>
           
-          <Select defaultValue="week">
-            <SelectTrigger className="w-[120px]">
+          <Select defaultValue="week" className="hidden sm:flex">
+            <SelectTrigger className="w-[80px] sm:w-[120px]">
               <SelectValue placeholder="Week" />
             </SelectTrigger>
             <SelectContent>
@@ -189,9 +192,9 @@ export function WeekCalendarView() {
           <div className="w-8 h-8 border-4 border-pawly-teal border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
-        <div className="grid grid-cols-8 border-b">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 border-b overflow-x-auto">
           {/* Time column */}
-          <div className="border-r">
+          <div className="border-r sticky left-0 bg-white dark:bg-gray-900 z-10">
             <div className="h-16 border-b"></div> {/* Empty corner */}
             {hoursOfDay.map((hour, index) => (
               <div 
@@ -205,11 +208,12 @@ export function WeekCalendarView() {
           
           {/* Days columns */}
           {daysInWeek.map((day, dayIndex) => (
-            <div key={dayIndex} className="border-r last:border-r-0">
+            <div key={dayIndex} className="border-r last:border-r-0 min-w-[120px]">
               {/* Day header */}
               <div className="h-16 border-b p-2 text-center">
-                <div className="text-sm font-medium">{getDayName(day)}</div>
-                <div className={`text-2xl mt-1 ${day.toDateString() === new Date().toDateString() ? 'bg-blue-100 text-blue-800 rounded-full w-10 h-10 flex items-center justify-center mx-auto' : ''}`}>
+                <div className="text-sm font-medium hidden sm:block">{getDayName(day)}</div>
+                <div className="text-sm font-medium sm:hidden">{getDayName(day).substring(0, 3)}</div>
+                <div className={`text-xl sm:text-2xl mt-1 ${day.toDateString() === new Date().toDateString() ? 'bg-blue-100 text-blue-800 rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center mx-auto' : ''}`}>
                   {day.getDate()}
                 </div>
               </div>

@@ -17,21 +17,34 @@ import {
 } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth/authContext';
 import { toast } from 'sonner';
+// Import react-hook-form and zod
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, LoginFormValues } from '@/lib/validations/auth';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Set up form with react-hook-form
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors } 
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: ''
+    }
+  });
+  
+  const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     
     try {
-      // Try with our default admin credentials
-      await login(email, password);
+      await login(data.email, data.password);
       toast.success('Login successful!');
       router.push('/dashboard');
     } catch (error) {
@@ -50,7 +63,7 @@ export default function LoginPage() {
           Enter your credentials to access your account
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -58,10 +71,12 @@ export default function LoginPage() {
               id="email"
               type="email"
               placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              {...register('email')}
+              aria-invalid={errors.email ? "true" : "false"}
             />
+            {errors.email && (
+              <p className="text-sm text-red-500">{errors.email.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -77,10 +92,12 @@ export default function LoginPage() {
               id="password"
               type="password"
               placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              {...register('password')}
+              aria-invalid={errors.password ? "true" : "false"}
             />
+            {errors.password && (
+              <p className="text-sm text-red-500">{errors.password.message}</p>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             <Checkbox id="remember" />

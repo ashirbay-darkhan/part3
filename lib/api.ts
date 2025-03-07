@@ -385,14 +385,20 @@ export const createBookingLink = (link: Omit<BookingLink, 'id'>) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(link)
   });
-export const updateBookingLink = (id: string, link: Partial<BookingLink>) => 
-  fetchAPI<BookingLink>(`bookingLinks/${id}`, {
+
+export const updateBookingLink = async (id: string, updates: Partial<Omit<BookingLink, 'id' | 'businessId'>>) => {
+  return fetchAPI<BookingLink>(`bookingLinks/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(link)
+    body: JSON.stringify(updates)
   });
-export const deleteBookingLink = (id: string) => 
-  fetchAPI<{}>(`bookingLinks/${id}`, { method: 'DELETE' });
+};
+
+export const deleteBookingLink = async (id: string) => {
+  return fetchAPI<{}>(`bookingLinks/${id}`, {
+    method: 'DELETE'
+  });
+};
 
 // Services
 export const getServices = () => fetchAPI<Service[]>('services');
@@ -403,14 +409,22 @@ export const createService = (service: Omit<Service, 'id'>) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(service)
   });
-export const updateService = (id: string, service: Partial<Service>) => 
-  fetchAPI<Service>(`services/${id}`, {
+
+// Update an existing service
+export const updateService = async (id: string, updates: Partial<Omit<Service, 'id' | 'businessId'>>) => {
+  return fetchAPI<Service>(`services/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(service)
+    body: JSON.stringify(updates)
   });
-export const deleteService = (id: string) => 
-  fetchAPI<{}>(`services/${id}`, { method: 'DELETE' });
+};
+
+// Delete a service
+export const deleteService = async (id: string) => {
+  return fetchAPI<{}>(`services/${id}`, {
+    method: 'DELETE'
+  });
+};
 
 // Appointments
 export const getAppointments = () => fetchAPI<Appointment[]>('appointments');
@@ -455,11 +469,17 @@ export const deleteClient = (id: string) =>
   fetchAPI<{}>(`clients/${id}`, { method: 'DELETE' });
 
 // Business-specific API functions
-export const getBusinessServices = async () => {
-  const businessId = getBusinessId();
-  if (!businessId) throw new Error('No business ID found');
+export const getBusinessServices = async (businessId?: string) => {
+  const bId = businessId || getBusinessId();
+  if (!bId) throw new Error('No business ID found');
   
-  return fetchAPI<Service[]>(`services?businessId=${businessId}`);
+  try {
+    return await fetchAPI<Service[]>(`services?businessId=${bId}`);
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    // Return empty array instead of throwing to prevent app crashes
+    return [];
+  }
 };
 
 export const createBusinessService = async (service: Omit<Service, 'id' | 'businessId'>) => {
@@ -473,23 +493,65 @@ export const createBusinessService = async (service: Omit<Service, 'id' | 'busin
   });
 };
 
-export const getBusinessBookingLinks = async () => {
-  const businessId = getBusinessId();
-  if (!businessId) throw new Error('No business ID found');
+export const getBusinessBookingLinks = async (businessId?: string) => {
+  const bId = businessId || getBusinessId();
+  if (!bId) throw new Error('No business ID found');
   
-  return fetchAPI<BookingLink[]>(`bookingLinks?businessId=${businessId}`);
+  try {
+    // Get links
+    const links = await fetchAPI<BookingLink[]>(`bookingLinks?businessId=${bId}`);
+    
+    // Enhance links with user data if needed
+    const enhancedLinks = await Promise.all(
+      links.map(async (link) => {
+        // Skip if not an employee link or if already has employeeName
+        if (link.type !== 'Employee' || !link.employeeId || link.employeeName) {
+          return link;
+        }
+        
+        try {
+          // Get employee details
+          const user = await fetchAPI<User>(`users/${link.employeeId}`);
+          return {
+            ...link,
+            employeeName: user.name
+          };
+        } catch (error) {
+          console.warn(`Could not fetch details for employee ${link.employeeId}`);
+          return link;
+        }
+      })
+    );
+    
+    return enhancedLinks;
+  } catch (error) {
+    console.error('Error fetching booking links:', error);
+    return [];
+  }
 };
+
 
 export const createBusinessBookingLink = async (link: Omit<BookingLink, 'id' | 'businessId'>) => {
   const businessId = getBusinessId();
   if (!businessId) throw new Error('No business ID found');
   
+  // Ensure we're sending a properly formatted object
+  const newLink = {
+    name: link.name,
+    type: link.type,
+    url: link.url,
+    businessId,
+    ...(link.employeeId ? { employeeId: link.employeeId } : {}),
+    ...(link.employeeName ? { employeeName: link.employeeName } : {})
+  };
+  
   return fetchAPI<BookingLink>('bookingLinks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...link, businessId })
+    body: JSON.stringify(newLink)
   });
 };
+
 
 export const getBusinessAppointments = async (businessId?: string) => {
   const bId = businessId || getBusinessId();
@@ -511,6 +573,10 @@ export const getBusinessStaff = async () => {
   
   return fetchAPI<User[]>(`users?businessId=${businessId}&role=staff`);
 };
+
+
+
+
 
 // Initialize server availability check
 checkServerAvailability();

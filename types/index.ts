@@ -11,14 +11,18 @@ export type BookingLink = {
   type: 'General' | 'Employee' | 'Main';
   url: string;
   employeeId?: string;
+  employeeName?: string; // Added to display employee names
+  businessId?: string;
 };
 
 export type Service = {
   id: string;
   name: string;
-  duration: number; // в минутах
+  duration: number; // in minutes
   price: number;
   description?: string;
+  category?: string; // Added category field
+  businessId?: string; // This field might already exist in your BusinessService type
 };
 
 export type AppointmentStatus = 'Pending' | 'Arrived' | 'No-Show' | 'Confirmed';
@@ -86,3 +90,4 @@ export type BusinessAppointment = Appointment & {
 export type BusinessClient = Client & {
   businessId: string;
 };
+

@@ -63,28 +63,31 @@
   ],
   "services": [
     {
-      "id": "1",
-      "name": "Haircut",
+      "name": "asdasd",
+      "description": "asdasd",
+      "duration": 60,
+      "price": 12123,
+      "category": "Haircut",
+      "businessId": "1",
+      "id": "Rkg6NaH"
+    },
+    {
+      "name": "Lorem",
+      "description": "Lorem ipsim",
+      "duration": 35,
+      "price": 2000,
+      "category": "Skincare",
+      "businessId": "1741098049512",
+      "id": "I3yYFSN"
+    },
+    {
+      "name": "Styling",
+      "description": "Hair Styling",
       "duration": 60,
       "price": 2000,
-      "description": "Classic haircut",
-      "businessId": "1"
-    },
-    {
-      "id": "2",
-      "name": "Hair coloring",
-      "duration": 120,
-      "price": 5000,
-      "description": "Full hair coloring",
-      "businessId": "1"
-    },
-    {
-      "id": "3",
-      "name": "Styling",
-      "duration": 30,
-      "price": 1500,
-      "description": "Hair styling",
-      "businessId": "1"
+      "category": "Styling",
+      "businessId": "1",
+      "id": "EAdWkId"
     }
   ],
   "bookingLinks": [
@@ -109,54 +112,9 @@
       "url": "n826237.alteg.io",
       "employeeId": "1",
       "businessId": "1"
-    },
-    {
-      "0": "1",
-      "1": "7",
-      "2": "4",
-      "3": "1",
-      "4": "0",
-      "5": "9",
-      "6": "8",
-      "7": "0",
-      "8": "4",
-      "9": "9",
-      "10": "5",
-      "11": "1",
-      "12": "2",
-      "businessId": "1741098049512",
-      "id": "EYghVTK"
     }
   ],
-  "appointments": [
-    {
-      "id": "1",
-      "clientId": "1",
-      "employeeId": "2",
-      "serviceId": "1",
-      "date": "2025-02-25",
-      "startTime": "12:00",
-      "endTime": "13:00",
-      "duration": 60,
-      "status": "Pending",
-      "price": 2000,
-      "comment": "asdas",
-      "businessId": "1"
-    },
-    {
-      "id": "2",
-      "clientId": "2",
-      "employeeId": "1",
-      "serviceId": "2",
-      "date": "2025-03-03",
-      "startTime": "15:00",
-      "endTime": "17:00",
-      "duration": 120,
-      "status": "Confirmed",
-      "price": 5000,
-      "businessId": "1"
-    }
-  ],
+  "appointments": [],
   "clients": [
     {
       "id": "1",

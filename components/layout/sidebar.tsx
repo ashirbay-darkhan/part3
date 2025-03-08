@@ -195,11 +195,15 @@ export function Sidebar() {
             <SidebarItem
               href="/staff"
               icon={<Users className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
-              label="Staff"
-              isActive={pathname.includes('/staff')}
-              hasSubMenu={true}
-              isOpen={openMenus.staff}
-              onClick={() => toggleMenu('staff')}
+              label="Staff Management"
+              isActive={pathname.includes('/staff') && !pathname.includes('/calendar')}
+            />
+
+            <SidebarItem
+              href="/calendar"
+              icon={<Calendar className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
+              label="Calendar"
+              isActive={pathname.includes('/calendar')}
             />
 
             <SidebarItem

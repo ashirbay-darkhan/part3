@@ -1,7 +1,7 @@
 export type User = {
   id: string;
   name: string;
-  role: string;
+  serviceIds?: string[]; // IDs of services this staff can provide
   avatar?: string;
 };
 
@@ -70,8 +70,8 @@ export type BusinessUser = User & {
   businessId: string;
   businessName: string;
   email: string;
-  role: 'admin' | 'staff';
   isVerified: boolean;
+  serviceIds: string[]; // IDs of services this staff can provide
 };
 
 // Extend existing types with business ownership

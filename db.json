@@ -4,21 +4,29 @@
       "id": "1",
       "name": "Bobby Pin",
       "email": "admin@example.com",
-      "password": "password123",
       "role": "admin",
       "businessId": "1",
       "businessName": "Bobby's Salon",
-      "isVerified": true
+      "isVerified": true,
+      "serviceIds": [
+        "Rkg6NaH",
+        "EAdWkId",
+        "vTk5twi"
+      ]
     },
     {
       "id": "2",
       "name": "Lorem Ipsum",
       "email": "staff@example.com",
-      "password": "password123",
       "role": "staff",
       "businessId": "1",
       "businessName": "Bobby's Salon",
-      "isVerified": true
+      "isVerified": true,
+      "serviceIds": [
+        "Rkg6NaH",
+        "EAdWkId",
+        "vTk5twi"
+      ]
     },
     {
       "id": "1741095291329",
@@ -39,6 +47,44 @@
       "businessName": "Nike",
       "role": "admin",
       "isVerified": true
+    },
+    {
+      "name": "asdasd",
+      "email": "pdmitry314@gmail.com",
+      "password": "asdasdasd",
+      "role": "staff",
+      "businessId": "1741098049512",
+      "businessName": "Nike",
+      "id": "1741434054062",
+      "isVerified": true
+    },
+    {
+      "name": "new",
+      "email": "ashirbay.d@gmail.com",
+      "role": "staff",
+      "businessId": "1",
+      "businessName": "Bobby's Salon",
+      "id": "1741435008600",
+      "isVerified": true,
+      "serviceIds": [
+        "Rkg6NaH",
+        "EAdWkId",
+        "vTk5twi"
+      ]
+    },
+    {
+      "name": "asdasd",
+      "email": "darkhan.ashirbay01@gmail.com",
+      "role": "staff",
+      "businessId": "1",
+      "businessName": "Bobby's Salon",
+      "id": "1741435696799",
+      "isVerified": true,
+      "serviceIds": [
+        "Rkg6NaH",
+        "EAdWkId",
+        "vTk5twi"
+      ]
     }
   ],
   "businesses": [
@@ -88,6 +134,15 @@
       "category": "Styling",
       "businessId": "1",
       "id": "EAdWkId"
+    },
+    {
+      "name": "Women's haicut",
+      "description": "Women's haicut lorem ipsum",
+      "duration": 60,
+      "price": 3000,
+      "category": "Haircut",
+      "businessId": "1",
+      "id": "vTk5twi"
     }
   ],
   "bookingLinks": [

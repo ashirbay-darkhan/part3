@@ -1,23 +1,84 @@
 'use client';
 
-import { useState } from 'react';
-import { Appointment } from '@/types';
-import { services, clients, getStatusDetails } from '@/lib/dummy-data';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
+import { Appointment, Service, Client, User } from '@/types';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogTitle,
+  DialogHeader
+} from '@/components/ui/dialog';
 import { AppointmentDetailView } from './appointment-detail';
 import { cn } from '@/lib/utils';
+import { getService, getClient, getUser } from '@/lib/api';
 
 interface AppointmentCardProps {
   appointment: Appointment;
   onClick: () => void;
+  onStatusChange?: () => Promise<void>;
 }
 
-export function AppointmentCard({ appointment, onClick }: AppointmentCardProps) {
+export function AppointmentCard({ appointment, onClick, onStatusChange }: AppointmentCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [service, setService] = useState<Service | null>(null);
+  const [client, setClient] = useState<Client | null>(null);
+  const [employee, setEmployee] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   
-  const service = services.find(s => s.id === appointment.serviceId);
-  const client = clients.find(c => c.id === appointment.clientId);
-  const statusDetails = getStatusDetails(appointment.status);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setHasError(false);
+        
+        // Use Promise.allSettled to continue even if some requests fail
+        const results = await Promise.allSettled([
+          getService(appointment.serviceId),
+          getClient(appointment.clientId),
+          getUser(appointment.employeeId)
+        ]);
+        
+        // Handle each result
+        if (results[0].status === 'fulfilled') {
+          setService(results[0].value);
+        }
+        
+        if (results[1].status === 'fulfilled') {
+          setClient(results[1].value);
+        }
+        
+        if (results[2].status === 'fulfilled') {
+          setEmployee(results[2].value);
+        }
+      } catch (error) {
+        console.error('Error fetching appointment data:', error);
+        setHasError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [appointment.serviceId, appointment.clientId, appointment.employeeId]);
+  
+  // Get status color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Pending':
+        return 'bg-yellow-500';
+      case 'Arrived':
+        return 'bg-green-500';
+      case 'No-Show':
+        return 'bg-red-500';
+      case 'Confirmed':
+        return 'bg-blue-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+  
+  const statusColor = getStatusColor(appointment.status);
   
   // Calculate duration in hours for height
   const [startH, startM] = appointment.startTime.split(':').map(Number);
@@ -31,6 +92,9 @@ export function AppointmentCard({ appointment, onClick }: AppointmentCardProps) 
   
   const handleClick = () => {
     setIsDialogOpen(true);
+    // Reset states to trigger fresh data loading
+    setIsLoading(true);
+    setHasError(false);
     onClick();
   };
   
@@ -44,20 +108,44 @@ export function AppointmentCard({ appointment, onClick }: AppointmentCardProps) 
         }}
         onClick={handleClick}
       >
-        <div className={cn(`text-xs px-2 py-1 flex items-center text-white font-medium`, statusDetails.color)}>
+        <div className={cn(`text-xs px-2 py-1 flex items-center text-white font-medium`, statusColor)}>
           <span className="truncate">{appointment.startTime}-{appointment.endTime}</span>
         </div>
         <div className="text-xs p-2 flex-1 bg-purple-100 dark:bg-purple-900">
-          <div className="font-medium dark:text-white">{service?.name}</div>
-          <div className="text-slate-600 dark:text-slate-300 truncate">{client?.name}</div>
+          <div className="font-medium dark:text-white">
+            {service?.name || `Service ${appointment.serviceId.substring(0, 6)}`}
+          </div>
+          <div className="text-slate-600 dark:text-slate-300 truncate">
+            {client?.name || `Client ${appointment.clientId.substring(0, 6)}`}
+          </div>
+          {employee && (
+            <div className="text-slate-500 dark:text-slate-400 text-xs mt-1 truncate">
+              Staff: {employee.name}
+            </div>
+          )}
         </div>
       </div>
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-5xl sm:max-w-5xl md:max-w-5xl lg:max-w-5xl w-[1100px] max-h-[85vh] overflow-y-auto p-0 [&>button]:hidden"
+          style={{ maxWidth: '1100px', width: '90%' }}
+        >
+          <DialogHeader>
+            <DialogTitle className="sr-only">
+              Appointment Details
+            </DialogTitle>
+          </DialogHeader>
           <AppointmentDetailView 
+            key={`appointment-${appointment.id}-${isDialogOpen ? 'open' : 'closed'}`}
             appointment={appointment} 
-            onClose={() => setIsDialogOpen(false)}
+            onClose={() => {
+              setIsDialogOpen(false);
+              // If there was a status change, refresh the appointment data
+              if (onStatusChange) {
+                onStatusChange();
+              }
+            }}
           />
         </DialogContent>
       </Dialog>

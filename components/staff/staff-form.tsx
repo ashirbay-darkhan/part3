@@ -12,6 +12,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,11 +28,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/auth/authContext';
 import { getBusinessServices } from '@/lib/api/staff-service';
+import { Avatar } from '@/components/ui/avatar-fallback';
 
 const staffFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   serviceIds: z.array(z.string()),
+  avatar: z.string().optional(),
 });
 
 type StaffFormValues = z.infer<typeof staffFormSchema>;
@@ -72,11 +75,13 @@ export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormP
           name: initialData.name,
           email: initialData.email,
           serviceIds: initialData.serviceIds || [],
+          avatar: initialData.avatar || '',
         }
       : {
           name: '',
           email: '',
           serviceIds: [],
+          avatar: '',
         },
   });
 
@@ -87,12 +92,14 @@ export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormP
         name: initialData.name,
         email: initialData.email,
         serviceIds: initialData.serviceIds || [],
+        avatar: initialData.avatar || '',
       });
     } else {
       form.reset({
         name: '',
         email: '',
         serviceIds: [],
+        avatar: '',
       });
     }
   }, [initialData, form]);
@@ -155,6 +162,34 @@ export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormP
                   <FormControl>
                     <Input placeholder="john@example.com" type="email" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="avatar"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Profile Picture</FormLabel>
+                  <div className="flex items-center gap-4">
+                    <Avatar 
+                      src={field.value} 
+                      name={form.getValues("name") || "Staff"} 
+                      className="w-16 h-16" 
+                    />
+                    <FormControl>
+                      <Input 
+                        placeholder="https://example.com/avatar.jpg" 
+                        type="url" 
+                        {...field} 
+                      />
+                    </FormControl>
+                  </div>
+                  <FormDescription>
+                    Enter a URL for the staff member's profile picture
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

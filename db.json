@@ -8,6 +8,7 @@
       "businessId": "1",
       "businessName": "Bobby's Salon",
       "isVerified": true,
+      "avatar": "https://ui-avatars.com/api/?name=Bobby+Pin&background=0D8ABC&color=fff",
       "serviceIds": [
         "Rkg6NaH",
         "EAdWkId",
@@ -22,6 +23,7 @@
       "businessId": "1",
       "businessName": "Bobby's Salon",
       "isVerified": true,
+      "avatar": "https://ui-avatars.com/api/?name=Lorem+Ipsum&background=6B21A8&color=fff",
       "serviceIds": [
         "Rkg6NaH",
         "EAdWkId",
@@ -36,7 +38,8 @@
       "businessId": "1741095291279",
       "businessName": "Nike",
       "role": "admin",
-      "isVerified": true
+      "isVerified": true,
+      "avatar": "https://ui-avatars.com/api/?name=John+Doe&background=047857&color=fff"
     },
     {
       "id": "1741098049544",
@@ -46,7 +49,8 @@
       "businessId": "1741098049512",
       "businessName": "Nike",
       "role": "admin",
-      "isVerified": true
+      "isVerified": true,
+      "avatar": "https://ui-avatars.com/api/?name=Дархан&background=B91C1C&color=fff"
     },
     {
       "name": "asdasd",
@@ -56,7 +60,8 @@
       "businessId": "1741098049512",
       "businessName": "Nike",
       "id": "1741434054062",
-      "isVerified": true
+      "isVerified": true,
+      "avatar": "https://ui-avatars.com/api/?name=asdasd&background=7C3AED&color=fff"
     },
     {
       "name": "new",
@@ -66,6 +71,7 @@
       "businessName": "Bobby's Salon",
       "id": "1741435008600",
       "isVerified": true,
+      "avatar": "https://ui-avatars.com/api/?name=new&background=0369A1&color=fff",
       "serviceIds": [
         "Rkg6NaH",
         "EAdWkId",
@@ -80,6 +86,7 @@
       "businessName": "Bobby's Salon",
       "id": "1741435696799",
       "isVerified": true,
+      "avatar": "https://ui-avatars.com/api/?name=asdasd&background=A16207&color=fff",
       "serviceIds": [
         "Rkg6NaH",
         "EAdWkId",
@@ -169,7 +176,250 @@
       "businessId": "1"
     }
   ],
-  "appointments": [],
+  "appointments": [
+    {
+      "id": "1",
+      "clientId": "1",
+      "employeeId": "1",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-05T00:00:00.000Z",
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "duration": 60,
+      "status": "Confirmed",
+      "comment": "First time client",
+      "price": 12123
+    },
+    {
+      "id": "2",
+      "clientId": "2",
+      "employeeId": "2",
+      "serviceId": "EAdWkId",
+      "date": "2025-03-05T00:00:00.000Z",
+      "startTime": "11:30",
+      "endTime": "12:30",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 2000
+    },
+    {
+      "id": "3",
+      "clientId": "1",
+      "employeeId": "1",
+      "serviceId": "vTk5twi",
+      "date": "2025-03-06T00:00:00.000Z",
+      "startTime": "14:00",
+      "endTime": "15:00",
+      "duration": 60,
+      "status": "Pending",
+      "price": 3000
+    },
+    {
+      "id": "4",
+      "clientId": "2",
+      "employeeId": "2",
+      "serviceId": "vTk5twi",
+      "date": "2025-03-06T00:00:00.000Z",
+      "startTime": "15:30",
+      "endTime": "16:30",
+      "duration": 60,
+      "status": "Confirmed",
+      "comment": "Regular client",
+      "price": 3000
+    },
+    {
+      "id": "5",
+      "clientId": "1",
+      "employeeId": "1741435008600",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-07T00:00:00.000Z",
+      "startTime": "09:30",
+      "endTime": "10:30",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 12123
+    },
+    {
+      "id": "6",
+      "clientId": "2",
+      "employeeId": "1741435696799",
+      "serviceId": "EAdWkId",
+      "date": "2025-03-07T00:00:00.000Z",
+      "startTime": "11:00",
+      "endTime": "12:00",
+      "duration": 60,
+      "status": "No-Show",
+      "price": 2000
+    },
+    {
+      "id": "7",
+      "clientId": "1",
+      "employeeId": "1",
+      "serviceId": "vTk5twi",
+      "date": "2025-03-08T00:00:00.000Z",
+      "startTime": "13:00",
+      "endTime": "14:00",
+      "duration": 60,
+      "status": "Arrived",
+      "price": 3000
+    },
+    {
+      "id": "8",
+      "clientId": "2",
+      "employeeId": "2",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-08T00:00:00.000Z",
+      "startTime": "16:00",
+      "endTime": "17:00",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 12123
+    },
+    {
+      "id": "9",
+      "clientId": "1",
+      "employeeId": "1741435008600",
+      "serviceId": "EAdWkId",
+      "date": "2025-03-04T00:00:00.000Z",
+      "startTime": "10:30",
+      "endTime": "11:30",
+      "duration": 60,
+      "status": "Arrived",
+      "price": 2000
+    },
+    {
+      "id": "10",
+      "clientId": "2",
+      "employeeId": "1741435696799",
+      "serviceId": "vTk5twi",
+      "date": "2025-03-04T00:00:00.000Z",
+      "startTime": "14:30",
+      "endTime": "15:30",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 3000
+    },
+    {
+      "id": "11",
+      "clientId": "1",
+      "employeeId": "1",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-03T00:00:00.000Z",
+      "startTime": "11:00",
+      "endTime": "12:00",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 12123
+    },
+    {
+      "id": "12",
+      "clientId": "2",
+      "employeeId": "2",
+      "serviceId": "EAdWkId",
+      "date": "2025-03-03T00:00:00.000Z",
+      "startTime": "13:30",
+      "endTime": "14:30",
+      "duration": 60,
+      "status": "Arrived",
+      "price": 2000
+    },
+    {
+      "id": "13",
+      "clientId": "1",
+      "employeeId": "1741435008600",
+      "serviceId": "vTk5twi",
+      "date": "2025-03-03T00:00:00.000Z",
+      "startTime": "16:00",
+      "endTime": "17:00",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 3000
+    },
+    {
+      "id": "14",
+      "clientId": "2",
+      "employeeId": "1",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-09T00:00:00.000Z",
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "duration": 60,
+      "status": "Pending",
+      "price": 12123
+    },
+    {
+      "id": "15",
+      "clientId": "1",
+      "employeeId": "2",
+      "serviceId": "EAdWkId",
+      "date": "2025-03-09T00:00:00.000Z",
+      "startTime": "12:30",
+      "endTime": "13:30",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 2000
+    },
+    {
+      "id": "16",
+      "clientId": "2",
+      "employeeId": "1741435696799",
+      "serviceId": "vTk5twi",
+      "date": "2025-03-09T00:00:00.000Z",
+      "startTime": "15:00",
+      "endTime": "16:00",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 3000
+    },
+    {
+      "id": "17",
+      "clientId": "1",
+      "employeeId": "1",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-05T00:00:00.000Z",
+      "startTime": "14:00",
+      "endTime": "15:00",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 12123
+    },
+    {
+      "id": "18",
+      "clientId": "2",
+      "employeeId": "2",
+      "serviceId": "EAdWkId",
+      "date": "2025-03-06T00:00:00.000Z",
+      "startTime": "10:30",
+      "endTime": "11:30",
+      "duration": 60,
+      "status": "No-Show",
+      "price": 2000
+    },
+    {
+      "id": "19",
+      "clientId": "1",
+      "employeeId": "1741435008600",
+      "serviceId": "vTk5twi",
+      "date": "2025-03-07T00:00:00.000Z",
+      "startTime": "16:00",
+      "endTime": "17:00",
+      "duration": 60,
+      "status": "Confirmed",
+      "price": 3000
+    },
+    {
+      "id": "20",
+      "clientId": "2",
+      "employeeId": "1741435696799",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-08T00:00:00.000Z",
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "duration": 60,
+      "status": "Arrived",
+      "price": 12123
+    }
+  ],
   "clients": [
     {
       "id": "1",

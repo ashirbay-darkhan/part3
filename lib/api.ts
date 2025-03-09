@@ -1,4 +1,4 @@
-import { User, BookingLink, Service, Appointment, Client, AppointmentStatus } from '@/types';
+import { User, BookingLink, Service, Appointment, Client, AppointmentStatus, BusinessUser } from '@/types';
 
 const API_URL = 'http://localhost:3001';
 
@@ -260,11 +260,11 @@ async function fetchAPI<T>(
     const response = await fetch(url, {
       ...options,
       headers,
-      signal: AbortSignal.timeout(2000) // 2 second timeout
+      signal: AbortSignal.timeout(5000) // 5 second timeout
     });
     
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
     
     return await response.json();
@@ -409,22 +409,14 @@ export const createService = (service: Omit<Service, 'id'>) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(service)
   });
-
-// Update an existing service
-export const updateService = async (id: string, updates: Partial<Omit<Service, 'id' | 'businessId'>>) => {
-  return fetchAPI<Service>(`services/${id}`, {
+export const updateService = (id: string, service: Partial<Service>) => 
+  fetchAPI<Service>(`services/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(updates)
+    body: JSON.stringify(service)
   });
-};
-
-// Delete a service
-export const deleteService = async (id: string) => {
-  return fetchAPI<{}>(`services/${id}`, {
-    method: 'DELETE'
-  });
-};
+export const deleteService = (id: string) => 
+  fetchAPI(`services/${id}`, { method: 'DELETE' });
 
 // Appointments
 export const getAppointments = () => fetchAPI<Appointment[]>('appointments');
@@ -466,7 +458,7 @@ export const updateClient = (id: string, client: Partial<Client>) =>
     body: JSON.stringify(client)
   });
 export const deleteClient = (id: string) => 
-  fetchAPI<{}>(`clients/${id}`, { method: 'DELETE' });
+  fetchAPI(`clients/${id}`, { method: 'DELETE' });
 
 // Business-specific API functions
 export const getBusinessServices = async (businessId?: string) => {
@@ -557,7 +549,27 @@ export const getBusinessAppointments = async (businessId?: string) => {
   const bId = businessId || getBusinessId();
   if (!bId) throw new Error('No business ID found');
   
-  return fetchAPI<Appointment[]>(`appointments?businessId=${bId}`);
+  try {
+    // First try to get appointments with businessId filter
+    return await fetchAPI<Appointment[]>(`appointments?businessId=${bId}`);
+  } catch (error) {
+    console.error('Error fetching appointments with businessId, falling back:', error);
+    
+    try {
+      // Fallback: Get all appointments and filter by staff from this business
+      const allAppointments = await getAppointments();
+      
+      // Get staff IDs from this business
+      const businessStaff = await getBusinessStaff();
+      const staffIds = businessStaff.map(staff => staff.id);
+      
+      // Filter appointments by staff ID
+      return allAppointments.filter(apt => staffIds.includes(apt.employeeId));
+    } catch (secondError) {
+      console.error('Error fetching appointments with fallback:', secondError);
+      return []; // Return empty array instead of throwing
+    }
+  }
 };
 
 export const getBusinessClients = async (businessId?: string) => {
@@ -571,12 +583,28 @@ export const getBusinessStaff = async () => {
   const businessId = getBusinessId();
   if (!businessId) throw new Error('No business ID found');
   
-  return fetchAPI<User[]>(`users?businessId=${businessId}&role=staff`);
+  try {
+    // First try with the business staff endpoint
+    return await fetchAPI<BusinessUser[]>(`users?businessId=${businessId}&role=staff`);
+  } catch (error) {
+    try {
+      console.error('Error fetching business staff, trying fallback:', error);
+      
+      // Fallback: Get all users and filter by businessId
+      const allUsers = await getUsers();
+      // Filter and cast to BusinessUser since we're filtering for business users
+      return allUsers.filter(user => 
+        // Check for properties that indicate a BusinessUser
+        'businessId' in user && 
+        user.businessId === businessId && 
+        (user.serviceIds && user.serviceIds.length > 0)
+      ) as BusinessUser[];
+    } catch (secondError) {
+      console.error('Error fetching business staff with fallback:', secondError);
+      return []; // Return empty array instead of throwing
+    }
+  }
 };
-
-
-
-
 
 // Initialize server availability check
 checkServerAvailability();

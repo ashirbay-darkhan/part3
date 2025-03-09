@@ -11,8 +11,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { AppointmentCard } from './appointment-card';
-import { getAppointments, getUsers } from '@/lib/api';
+import { getAppointments, getUsers, getBusinessAppointments, getBusinessStaff } from '@/lib/api';
 import { Appointment, User } from '@/types';
+import { Avatar } from '@/components/ui/avatar-fallback';
+import { useAuth } from '@/lib/auth/authContext';
 
 // Utility functions for date handling
 const getDaysInWeek = (date: Date) => {
@@ -68,23 +70,41 @@ const formatDate = (date: Date) => {
 };
 
 export function WeekCalendarView() {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedStaff, setSelectedStaff] = useState<string>('all');
   const [appointmentDetails, setAppointmentDetails] = useState<Appointment | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [staffMembers, setStaffMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [appointmentsData, usersData] = await Promise.all([
-          getAppointments(),
-          getUsers()
-        ]);
-        setAppointments(appointmentsData);
-        setUsers(usersData);
+        
+        // Get business-specific data
+        if (user?.businessId) {
+          const [appointmentsData, staffData] = await Promise.all([
+            getBusinessAppointments(user.businessId),
+            getBusinessStaff()
+          ]);
+          
+          console.log('Fetched appointments:', appointmentsData);
+          console.log('Fetched staff:', staffData);
+          
+          setAppointments(appointmentsData);
+          setStaffMembers(staffData);
+        } else {
+          // Fallback to all data if no business ID
+          const [appointmentsData, usersData] = await Promise.all([
+            getAppointments(),
+            getUsers()
+          ]);
+          setAppointments(appointmentsData);
+          // Filter users who are likely staff (only keep users with serviceIds)
+          setStaffMembers(usersData.filter(u => u.serviceIds && u.serviceIds.length > 0));
+        }
       } catch (error) {
         console.error('Error fetching calendar data:', error);
       } finally {
@@ -93,7 +113,7 @@ export function WeekCalendarView() {
     };
     
     fetchData();
-  }, []);
+  }, [user]);
   
   const daysInWeek = useMemo(() => getDaysInWeek(selectedDate), [selectedDate]);
   const hoursOfDay = getHoursOfDay();
@@ -112,6 +132,21 @@ export function WeekCalendarView() {
     });
   }, [selectedStaff, daysInWeek, appointments]);
   
+  // Staff with appointments in the current week
+  const staffWithAppointments = useMemo(() => {
+    const staffIds = appointments
+      .filter(apt => {
+        const aptDate = new Date(apt.date);
+        const weekStart = daysInWeek[0];
+        const weekEnd = daysInWeek[6];
+        return aptDate >= weekStart && aptDate <= weekEnd;
+      })
+      .map(apt => apt.employeeId);
+    
+    const uniqueStaffIds = Array.from(new Set(staffIds));
+    return staffMembers.filter(user => uniqueStaffIds.includes(user.id));
+  }, [appointments, daysInWeek, staffMembers]);
+  
   const previousWeek = () => {
     const prevWeek = new Date(selectedDate);
     prevWeek.setDate(selectedDate.getDate() - 7);
@@ -126,6 +161,29 @@ export function WeekCalendarView() {
   
   const handleAppointmentClick = (appointment: Appointment) => {
     setAppointmentDetails(appointment);
+  };
+
+  const handleStaffSelect = (staffId: string) => {
+    setSelectedStaff(staffId);
+  };
+  
+  // Add a function to refresh appointments after a status change
+  const refreshAppointments = async () => {
+    setIsLoading(true);
+    try {
+      // Re-fetch appointments using the same method as in the initial load
+      if (user?.businessId) {
+        const appointmentsData = await getBusinessAppointments(user.businessId);
+        setAppointments(appointmentsData);
+      } else {
+        const appointmentsData = await getAppointments();
+        setAppointments(appointmentsData);
+      }
+    } catch (error) {
+      console.error('Error refreshing appointments:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -166,7 +224,7 @@ export function WeekCalendarView() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All staff</SelectItem>
-              {users.map(user => (
+              {staffMembers.map(user => (
                 <SelectItem key={user.id} value={user.id}>
                   {user.name}
                 </SelectItem>
@@ -174,17 +232,44 @@ export function WeekCalendarView() {
             </SelectContent>
           </Select>
           
-          <Select defaultValue="week" className="hidden sm:flex">
-            <SelectTrigger className="w-[80px] sm:w-[120px]">
-              <SelectValue placeholder="Week" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Day</SelectItem>
-              <SelectItem value="week">Week</SelectItem>
-              <SelectItem value="month">Month</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="hidden sm:block">
+            <Select defaultValue="week">
+              <SelectTrigger className="w-[80px] sm:w-[120px]">
+                <SelectValue placeholder="Week" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">Day</SelectItem>
+                <SelectItem value="week">Week</SelectItem>
+                <SelectItem value="month">Month</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+      </div>
+      
+      {/* Staff filter pills/avatars */}
+      <div className="px-4 py-2 border-b dark:border-gray-800 flex items-center overflow-x-auto">
+        <Button
+          variant={selectedStaff === 'all' ? 'default' : 'outline'}
+          size="sm"
+          className="rounded-full mr-2 text-xs"
+          onClick={() => handleStaffSelect('all')}
+        >
+          All Staff
+        </Button>
+        
+        {staffWithAppointments.map(staff => (
+          <Button
+            key={staff.id}
+            variant={selectedStaff === staff.id ? 'default' : 'outline'}
+            size="sm"
+            className="rounded-full mr-2 flex items-center space-x-1 px-2"
+            onClick={() => handleStaffSelect(staff.id)}
+          >
+            <Avatar src={staff.avatar} name={staff.name} className="w-6 h-6" />
+            <span className="text-xs">{staff.name}</span>
+          </Button>
+        ))}
       </div>
       
       {isLoading ? (
@@ -234,6 +319,7 @@ export function WeekCalendarView() {
                         key={appointment.id}
                         appointment={appointment}
                         onClick={() => handleAppointmentClick(appointment)}
+                        onStatusChange={refreshAppointments}
                       />
                     ))}
                   </div>

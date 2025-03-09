@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Edit, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/avatar-fallback';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -110,7 +111,16 @@ export function StaffTable({ staffMembers, onDelete, onEdit }: StaffTableProps) 
           ) : (
             staffMembers.map((staff) => (
               <TableRow key={staff.id}>
-                <TableCell className="font-medium">{staff.name}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-3">
+                    <Avatar 
+                      src={staff.avatar} 
+                      name={staff.name} 
+                      className="w-9 h-9"
+                    />
+                    <span>{staff.name}</span>
+                  </div>
+                </TableCell>
                 <TableCell>{staff.email}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">

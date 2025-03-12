@@ -1,10 +1,12 @@
 'use client';
 
-import { Copy, ExternalLink, Trash2, Settings, Link2 } from 'lucide-react';
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ExternalLink, Copy, Trash2, LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { BookingLink } from '@/types';
+import { toast } from '@/components/ui/use-toast';
 
 interface BookingLinksListProps {
   links: BookingLink[];
@@ -13,139 +15,110 @@ interface BookingLinksListProps {
 }
 
 export function BookingLinksList({ links, isLoading, onDelete }: BookingLinksListProps) {
-  const getBadgeVariant = (type: BookingLink['type']) => {
-    switch (type) {
-      case 'Main':
-        return 'bg-blue-100 text-blue-800 hover:bg-blue-100';
-      case 'General':
-        return 'bg-slate-100 text-slate-800 hover:bg-slate-100';
-      case 'Employee':
-        return 'bg-green-100 text-green-800 hover:bg-green-100';
-      default:
-        return 'bg-slate-100 text-slate-800 hover:bg-slate-100';
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(`https://${text}`);
-    toast.success('Link copied to clipboard');
-  };
-
-  const openLinkInNewTab = (url: string) => {
-    window.open(`https://${url}`, '_blank');
+  // Helper function to copy link to clipboard
+  const copyToClipboard = (linkId: string) => {
+    const url = `${window.location.origin}/form/${linkId}`;
+    navigator.clipboard.writeText(url);
+    
+    toast({
+      title: "Link copied!",
+      description: "Booking link copied to clipboard"
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white dark:bg-gray-800 rounded-md p-4 border animate-pulse">
-            <div className="grid grid-cols-3 gap-4 items-center">
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
-              <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
-              <div className="flex justify-between">
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
-                <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-20"></div>
-              </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-1/3" />
+          <Skeleton className="h-4 w-1/2 mt-2" />
+        </CardHeader>
+        <CardContent>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="mb-3">
+              <Skeleton className="h-16 w-full" />
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </CardContent>
+      </Card>
     );
   }
 
   if (links.length === 0) {
     return (
-      <div className="text-center py-8 border rounded-md">
-        <Link2 className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-        <h3 className="text-lg font-medium mb-2">No booking links yet</h3>
-        <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6">
-          Create your first booking link to share with your clients and start receiving online bookings.
-        </p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Booking Links</CardTitle>
+          <CardDescription>Create and manage links for clients to book appointments</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center p-6 text-center">
+            <LinkIcon className="h-10 w-10 text-muted-foreground mb-2" />
+            <h3 className="text-lg font-medium">No booking links yet</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Create your first booking link to share with clients
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div>
-      <div className="grid grid-cols-3 text-sm font-medium text-slate-500 mb-2 px-4">
-        <div>Name</div>
-        <div>Type</div>
-        <div>Link</div>
-      </div>
-      
-      <div className="space-y-2">
-        {links.map((link) => (
-          <div 
-            key={link.id} 
-            className="grid grid-cols-3 items-center border rounded-md p-4 text-sm bg-white dark:bg-gray-800"
-          >
-            <div>
-              <div className="font-medium text-slate-900 dark:text-white">{link.name}</div>
-              {link.type === 'Employee' && link.employeeName && (
-                <div className="text-slate-500 text-xs">{link.employeeName}</div>
-              )}
-            </div>
-            
-            <div>
-              <Badge className={getBadgeVariant(link.type)} variant="secondary">
-                {link.type}
-              </Badge>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <a 
-                  href={`https://${link.url}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline truncate max-w-[150px] sm:max-w-[200px]"
-                >
-                  {link.url}
-                </a>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => copyToClipboard(link.url)}
-                  title="Copy to clipboard"
-                >
-                  <Copy className="h-4 w-4 text-slate-500" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openLinkInNewTab(link.url)}
-                  title="Open link"
-                >
-                  <ExternalLink className="h-4 w-4 text-slate-500" />
-                </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle>Booking Links</CardTitle>
+        <CardDescription>Create and manage links for clients to book appointments</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {links.map((link) => (
+            <div 
+              key={link.id} 
+              className="flex items-center justify-between p-4 border rounded-md hover:bg-secondary/50 transition-colors"
+            >
+              <div className="flex flex-col space-y-1">
+                <div className="font-medium">{link.name}</div>
+                <div className="text-sm text-muted-foreground flex items-center">
+                  <LinkIcon className="h-3.5 w-3.5 mr-1" />
+                  {`${window.location.origin}/form/${link.id}`}
+                </div>
+                {link.type === 'Employee' && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Staff member: {link.employeeName || 'Unknown'}
+                  </div>
+                )}
               </div>
-              
-              <div className="flex items-center gap-2">
+              <div className="flex space-x-2">
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="h-8 gap-1"
+                  onClick={() => copyToClipboard(link.id)}
                 >
-                  <Settings className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Set up</span>
+                  <Copy className="h-4 w-4 mr-1" />
+                  Copy
                 </Button>
                 <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.open(`/form/${link.id}`, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Open
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
                   onClick={() => onDelete(link)}
-                  title="Delete link"
+                  className="text-destructive border-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

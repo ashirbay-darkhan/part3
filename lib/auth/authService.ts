@@ -23,6 +23,24 @@ export const login = async (email: string, password: string): Promise<BusinessUs
     const data = await response.json();
     const userData = data.user;
     
+    // Ensure user has admin role
+    if (!userData.role || userData.role !== 'admin') {
+      userData.role = 'admin';
+      
+      // Update the user's role in the database
+      try {
+        await fetch(`http://localhost:3001/users/${userData.id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ role: 'admin' })
+        });
+      } catch (updateError) {
+        console.warn('Could not update user role in database:', updateError);
+      }
+    }
+    
     // Store user in localStorage for session persistence
     localStorage.setItem('currentUser', JSON.stringify(userData));
     localStorage.setItem('auth_token', data.token || userData.id);
@@ -48,6 +66,24 @@ export const login = async (email: string, password: string): Promise<BusinessUs
       // Simple password check (in a real app, never do this - use hashed passwords and proper auth)
       if (user.password !== password) {
         throw new Error('Invalid credentials');
+      }
+      
+      // Ensure user has admin role
+      if (!user.role || user.role !== 'admin') {
+        user.role = 'admin';
+        
+        // Update the user's role in the database
+        try {
+          await fetch(`http://localhost:3001/users/${user.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ role: 'admin' })
+          });
+        } catch (updateError) {
+          console.warn('Could not update user role in database:', updateError);
+        }
       }
       
       // Remove password before returning user

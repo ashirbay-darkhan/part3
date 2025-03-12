@@ -15,6 +15,7 @@ export function middleware(request: NextRequest) {
   // If not authenticated and accessing protected route, redirect to login
   if (!token && !publicPaths.some(path => pathname.startsWith(path)) && 
       !pathname.startsWith('/booking') && // Public booking pages remain accessible
+      !pathname.startsWith('/form') && // Public form pages remain accessible
       !pathname.startsWith('/api/booking-forms') && // Public booking API remains accessible
       !pathname.startsWith('/_next') && // Next.js internal routes
       !pathname.startsWith('/favicon.ico') // Favicon

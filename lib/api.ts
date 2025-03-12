@@ -1,4 +1,4 @@
-import { User, BookingLink, Service, Appointment, Client, AppointmentStatus, BusinessUser } from '@/types';
+import { User, BookingLink, Service, Appointment, Client, AppointmentStatus, BusinessUser, Business, ServiceCategory } from '@/types';
 
 const API_URL = 'http://localhost:3001';
 
@@ -139,6 +139,46 @@ const FALLBACK_DATA = {
   ]
 };
 
+// Function to load fallback data from localStorage
+function loadFallbackDataFromStorage() {
+  try {
+    if (typeof window !== 'undefined') {
+      const savedData = localStorage.getItem('fallback_data');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        // Merge with default FALLBACK_DATA structure to ensure all properties exist
+        Object.keys(parsedData).forEach(key => {
+          if (FALLBACK_DATA[key as keyof typeof FALLBACK_DATA]) {
+            (FALLBACK_DATA as any)[key] = parsedData[key];
+          }
+        });
+        console.log('Loaded fallback data from localStorage');
+      }
+    }
+  } catch (error) {
+    console.error('Error loading fallback data from localStorage:', error);
+  }
+}
+
+// Function to save fallback data to localStorage
+function saveFallbackDataToStorage() {
+  try {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fallback_data', JSON.stringify(FALLBACK_DATA));
+    }
+  } catch (error) {
+    console.error('Error saving fallback data to localStorage:', error);
+  }
+}
+
+// Load fallback data from localStorage on initialization
+if (typeof window !== 'undefined') {
+  loadFallbackDataFromStorage();
+  
+  // Set up event listener for beforeunload to ensure data is saved
+  window.addEventListener('beforeunload', saveFallbackDataToStorage);
+}
+
 // Function to get all instances of an entity from fallback data
 function getFallbackData<T>(entityName: keyof typeof FALLBACK_DATA, filter?: Record<string, any>): T[] {
   const data = FALLBACK_DATA[entityName] as any[];
@@ -171,6 +211,7 @@ function createFallbackItem<T>(entityName: keyof typeof FALLBACK_DATA, item: any
     ...item
   };
   (FALLBACK_DATA[entityName] as any[]).push(newItem);
+  saveFallbackDataToStorage(); // Save after creating
   return newItem as T;
 }
 
@@ -178,20 +219,26 @@ function createFallbackItem<T>(entityName: keyof typeof FALLBACK_DATA, item: any
 function updateFallbackItem<T>(entityName: keyof typeof FALLBACK_DATA, id: string, updates: any): T | null {
   const items = FALLBACK_DATA[entityName] as any[];
   const index = items.findIndex(item => item.id === id);
-  if (index === -1) return null;
+  if (index < 0) return null;
   
   items[index] = { ...items[index], ...updates };
+  saveFallbackDataToStorage(); // Save after updating
   return items[index] as T;
 }
 
-// Function to delete entity from fallback data
+// Function to delete entity in fallback data
 function deleteFallbackItem(entityName: keyof typeof FALLBACK_DATA, id: string): boolean {
   const items = FALLBACK_DATA[entityName] as any[];
-  const index = items.findIndex(item => item.id === id);
-  if (index === -1) return false;
+  const initialLength = items.length;
   
-  items.splice(index, 1);
-  return true;
+  // Filter out the item with the given ID
+  FALLBACK_DATA[entityName] = items.filter(item => item.id !== id) as any;
+  
+  const succeeded = initialLength > (FALLBACK_DATA[entityName] as any[]).length;
+  if (succeeded) {
+    saveFallbackDataToStorage(); // Save after deleting
+  }
+  return succeeded;
 }
 
 // Check if the server is available
@@ -248,12 +295,14 @@ async function fetchAPI<T>(
   
   try {
     const url = `${API_URL}/${endpoint}`;
-    const token = localStorage.getItem('auth_token');
+    
+    // Check if we're in a browser environment before accessing localStorage
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     
     const headers = {
       'Content-Type': 'application/json',
-      ...(options?.headers || {}),
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      ...(options?.headers || {})
     };
     
     console.log(`Attempting to fetch from ${endpoint}`);
@@ -349,6 +398,9 @@ const getAuthToken = () => localStorage.getItem('auth_token');
 // Function to get business ID
 const getBusinessId = () => {
   try {
+    // Check if we're in a browser environment before accessing localStorage
+    if (typeof window === 'undefined') return null;
+    
     const user = localStorage.getItem('currentUser');
     if (!user) return null;
     return JSON.parse(user).businessId;
@@ -379,12 +431,42 @@ export const deleteUser = (id: string) =>
 // Booking Links
 export const getBookingLinks = () => fetchAPI<BookingLink[]>('bookingLinks');
 export const getBookingLink = (id: string) => fetchAPI<BookingLink>(`bookingLinks/${id}`);
-export const createBookingLink = (link: Omit<BookingLink, 'id'>) => 
-  fetchAPI<BookingLink>('bookingLinks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(link)
-  });
+export const createBookingLink = async (link: Omit<BookingLink, 'id'>) => {
+  try {
+    // Try to use the real API first
+    return await fetchAPI<BookingLink>('bookingLinks', {
+      method: 'POST',
+      body: JSON.stringify(link)
+    });
+  } catch (error) {
+    console.error('Error creating booking link via API, using fallback:', error);
+    
+    // Generate a 7-10 digit random numeric ID
+    const min = 1000000;  // 7 digits minimum
+    const max = 9999999999;  // 10 digits maximum
+    const randomId = Math.floor(min + Math.random() * (max - min)).toString();
+    
+    // Include businessId from the current user if not already provided
+    const businessId = getBusinessId();
+    const linkWithBusinessId = {
+      ...link,
+      businessId: link.businessId || businessId
+    };
+    
+    // Create the link in fallback data with the properly formatted ID
+    const newLink = createFallbackItem<BookingLink>('bookingLinks', {
+      ...linkWithBusinessId,
+      id: randomId
+    });
+    
+    // Store the reverse mapping in localStorage for link resolution
+    if (typeof window !== 'undefined' && businessId) {
+      localStorage.setItem(`link_id_to_business_${randomId}`, businessId);
+    }
+    
+    return newLink;
+  }
+};
 
 export const updateBookingLink = async (id: string, updates: Partial<Omit<BookingLink, 'id' | 'businessId'>>) => {
   return fetchAPI<BookingLink>(`bookingLinks/${id}`, {
@@ -395,9 +477,28 @@ export const updateBookingLink = async (id: string, updates: Partial<Omit<Bookin
 };
 
 export const deleteBookingLink = async (id: string) => {
-  return fetchAPI<{}>(`bookingLinks/${id}`, {
-    method: 'DELETE'
-  });
+  try {
+    // First try the normal API call
+    return await fetchAPI<{}>(`bookingLinks/${id}`, {
+      method: 'DELETE'
+    });
+  } catch (error) {
+    console.error('Error deleting booking link via API, using fallback:', error);
+    
+    // Use our fallback delete mechanism, which now saves to localStorage
+    const result = deleteFallbackItem('bookingLinks', id);
+    
+    if (!result) {
+      throw new Error(`Booking link with ID ${id} not found in fallback data`);
+    }
+    
+    // Also clean up localStorage mappings
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`link_id_to_business_${id}`);
+    }
+    
+    return {};
+  }
 };
 
 // Services
@@ -421,12 +522,20 @@ export const deleteService = (id: string) =>
 // Appointments
 export const getAppointments = () => fetchAPI<Appointment[]>('appointments');
 export const getAppointment = (id: string) => fetchAPI<Appointment>(`appointments/${id}`);
-export const createAppointment = (appointment: Omit<Appointment, 'id'>) => 
-  fetchAPI<Appointment>('appointments', {
+export const createAppointment = (appointment: Omit<Appointment, 'id'>) => {
+  // Ensure businessId is set
+  const businessId = appointment.businessId || getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<Appointment>('appointments', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(appointment)
+    body: JSON.stringify({
+      ...appointment,
+      businessId
+    })
   });
+};
 export const updateAppointment = (id: string, appointment: Partial<Appointment>) => 
   fetchAPI<Appointment>(`appointments/${id}`, {
     method: 'PATCH',
@@ -445,12 +554,20 @@ export const deleteAppointment = (id: string) =>
 // Clients
 export const getClients = () => fetchAPI<Client[]>('clients');
 export const getClient = (id: string) => fetchAPI<Client>(`clients/${id}`);
-export const createClient = (client: Omit<Client, 'id'>) => 
-  fetchAPI<Client>('clients', {
+export const createClient = (client: Omit<Client, 'id'>) => {
+  // Ensure businessId is set
+  const businessId = client.businessId || getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  return fetchAPI<Client>('clients', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(client)
+    body: JSON.stringify({
+      ...client,
+      businessId
+    })
   });
+};
 export const updateClient = (id: string, client: Partial<Client>) => 
   fetchAPI<Client>(`clients/${id}`, {
     method: 'PATCH',
@@ -490,7 +607,7 @@ export const getBusinessBookingLinks = async (businessId?: string) => {
   if (!bId) throw new Error('No business ID found');
   
   try {
-    // Get links
+    // Get links from the API
     const links = await fetchAPI<BookingLink[]>(`bookingLinks?businessId=${bId}`);
     
     // Enhance links with user data if needed
@@ -517,33 +634,49 @@ export const getBusinessBookingLinks = async (businessId?: string) => {
     
     return enhancedLinks;
   } catch (error) {
-    console.error('Error fetching booking links:', error);
-    return [];
+    console.error('Error fetching booking links from API, using fallback:', error);
+    
+    try {
+      // Load the latest fallback data
+      loadFallbackDataFromStorage();
+      
+      // Filter links by businessId
+      const fallbackLinks = (FALLBACK_DATA.bookingLinks as BookingLink[])
+        .filter(link => link.businessId === bId);
+      
+      // Return enhanced links
+      return await Promise.all(
+        fallbackLinks.map(async (link) => {
+          // Skip if not an employee link or if already has employeeName
+          if (link.type !== 'Employee' || !link.employeeId || link.employeeName) {
+            return link;
+          }
+          
+          try {
+            // Try to get employee details
+            const employees = FALLBACK_DATA.users as User[];
+            const employee = employees.find(user => user.id === link.employeeId);
+            
+            if (employee) {
+              return {
+                ...link,
+                employeeName: employee.name
+              };
+            }
+            
+            return link;
+          } catch (error) {
+            console.warn(`Could not fetch details for employee ${link.employeeId}`);
+            return link;
+          }
+        })
+      );
+    } catch (fallbackError) {
+      console.error('Error with fallback booking links:', fallbackError);
+      return [];
+    }
   }
 };
-
-
-export const createBusinessBookingLink = async (link: Omit<BookingLink, 'id' | 'businessId'>) => {
-  const businessId = getBusinessId();
-  if (!businessId) throw new Error('No business ID found');
-  
-  // Ensure we're sending a properly formatted object
-  const newLink = {
-    name: link.name,
-    type: link.type,
-    url: link.url,
-    businessId,
-    ...(link.employeeId ? { employeeId: link.employeeId } : {}),
-    ...(link.employeeName ? { employeeName: link.employeeName } : {})
-  };
-  
-  return fetchAPI<BookingLink>('bookingLinks', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(newLink)
-  });
-};
-
 
 export const getBusinessAppointments = async (businessId?: string) => {
   const bId = businessId || getBusinessId();
@@ -556,18 +689,12 @@ export const getBusinessAppointments = async (businessId?: string) => {
     console.error('Error fetching appointments with businessId, falling back:', error);
     
     try {
-      // Fallback: Get all appointments and filter by staff from this business
-      const allAppointments = await getAppointments();
-      
-      // Get staff IDs from this business
-      const businessStaff = await getBusinessStaff();
-      const staffIds = businessStaff.map(staff => staff.id);
-      
-      // Filter appointments by staff ID
-      return allAppointments.filter(apt => staffIds.includes(apt.employeeId));
+      // Fallback to filtering manually
+      const appointments = await fetchAPI<Appointment[]>('appointments');
+      return appointments.filter(appointment => appointment.businessId === bId);
     } catch (secondError) {
-      console.error('Error fetching appointments with fallback:', secondError);
-      return []; // Return empty array instead of throwing
+      console.error('Error in fallback appointment fetching:', secondError);
+      return [];
     }
   }
 };
@@ -579,13 +706,13 @@ export const getBusinessClients = async (businessId?: string) => {
   return fetchAPI<Client[]>(`clients?businessId=${bId}`);
 };
 
-export const getBusinessStaff = async () => {
-  const businessId = getBusinessId();
-  if (!businessId) throw new Error('No business ID found');
+export const getBusinessStaff = async (businessId?: string) => {
+  const bId = businessId || getBusinessId();
+  if (!bId) throw new Error('No business ID found');
   
   try {
-    // First try with the business staff endpoint
-    return await fetchAPI<BusinessUser[]>(`users?businessId=${businessId}&role=staff`);
+    // First try with the business staff endpoint - include both staff and admin roles
+    return await fetchAPI<BusinessUser[]>(`users?businessId=${bId}`);
   } catch (error) {
     try {
       console.error('Error fetching business staff, trying fallback:', error);
@@ -596,8 +723,7 @@ export const getBusinessStaff = async () => {
       return allUsers.filter(user => 
         // Check for properties that indicate a BusinessUser
         'businessId' in user && 
-        user.businessId === businessId && 
-        (user.serviceIds && user.serviceIds.length > 0)
+        user.businessId === bId
       ) as BusinessUser[];
     } catch (secondError) {
       console.error('Error fetching business staff with fallback:', secondError);
@@ -606,5 +732,241 @@ export const getBusinessStaff = async () => {
   }
 };
 
+// Business API functions
+export const getBusiness = (id: string) => fetchAPI<Business>(`businesses/${id}`);
+export const getBusinessById = (id: string) => fetchAPI<Business>(`businesses/${id}`);
+
+// Update createAppointment to handle client data
+export const createAppointmentWithClient = async (
+  appointmentData: Omit<Appointment, 'id'>, 
+  clientData: Omit<Client, 'id' | 'totalVisits' | 'lastVisit'>
+) => {
+  // Ensure businessId is set
+  const businessId = appointmentData.businessId || getBusinessId();
+  if (!businessId) throw new Error('No business ID found');
+  
+  // First, check if client exists
+  try {
+    // Try to find client by phone and business ID
+    const existingClients = await fetchAPI<Client[]>(
+      `clients?phone=${encodeURIComponent(clientData.phone)}&businessId=${businessId}`
+    );
+    
+    let clientId;
+    
+    if (existingClients.length > 0) {
+      // Use existing client
+      clientId = existingClients[0].id;
+      
+      // Update client information if needed
+      await fetchAPI<Client>(`clients/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: clientData.name,
+          email: clientData.email,
+          notes: clientData.notes
+        })
+      });
+    } else {
+      // Create new client with business ID
+      const newClient = await fetchAPI<Client>('clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...clientData,
+          businessId,
+          totalVisits: 0,
+          lastVisit: new Date().toISOString()
+        })
+      });
+      
+      clientId = newClient.id;
+    }
+    
+    // Create appointment with client ID and business ID
+    return await fetchAPI<Appointment>('appointments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...appointmentData,
+        businessId,
+        clientId
+      })
+    });
+  } catch (error) {
+    console.error('Error creating appointment:', error);
+    throw error;
+  }
+};
+
+// Service Categories API functions
+
+export const getBusinessServiceCategories = async () => {
+  // Mock implementation - replace with actual API call in production
+  return new Promise<ServiceCategory[]>(resolve => {
+    setTimeout(() => {
+      resolve([
+        {
+          id: '1',
+          name: 'Haircut',
+          description: 'Hair cutting services',
+          color: '#4f46e5',
+        },
+        {
+          id: '2',
+          name: 'Styling',
+          description: 'Hair styling services',
+          color: '#8b5cf6',
+        },
+        {
+          id: '3',
+          name: 'Color',
+          description: 'Hair coloring services',
+          color: '#ec4899',
+        },
+        {
+          id: '4',
+          name: 'Treatment',
+          description: 'Hair treatment services',
+          color: '#f59e0b',
+        }
+      ]);
+    }, 500);
+  });
+};
+
+export const createServiceCategory = async (category: Omit<ServiceCategory, 'id' | 'businessId'>) => {
+  // Mock implementation - replace with actual API call in production
+  return new Promise<ServiceCategory>(resolve => {
+    setTimeout(() => {
+      // Generate a fake response with a random ID
+      resolve({
+        ...category,
+        id: Math.random().toString(36).substring(2, 9),
+      });
+    }, 500);
+  });
+};
+
+export const updateServiceCategory = async (id: string, category: Partial<Omit<ServiceCategory, 'id' | 'businessId'>>) => {
+  // Mock implementation - replace with actual API call in production
+  return new Promise<ServiceCategory>(resolve => {
+    setTimeout(() => {
+      resolve({
+        id,
+        ...category,
+        name: category.name || 'Updated Category',
+      } as ServiceCategory);
+    }, 500);
+  });
+};
+
+export const deleteServiceCategory = async (id: string) => {
+  // Mock implementation - replace with actual API call in production
+  return new Promise<void>(resolve => {
+    setTimeout(() => {
+      resolve();
+    }, 500);
+  });
+};
+
 // Initialize server availability check
 checkServerAvailability();
+
+export const getBusinessByLinkId = async (linkId: string): Promise<string | null> => {
+  try {
+    // Check if it's a generated numeric ID (7+ digits)
+    if (/^\d{7,}$/.test(linkId)) {
+      // For 7+ digit IDs (our randomly generated ones), we don't need to query the API
+      // since we know these don't exist in the backend
+      
+      // First, check if we're in a browser environment for localStorage access
+      if (typeof window !== 'undefined') {
+        // Check for the direct mapping first (most reliable)
+        const directMapping = localStorage.getItem(`link_id_to_business_${linkId}`);
+        if (directMapping) {
+          return directMapping;
+        }
+        
+        // Check if this is a personal link ID stored in localStorage
+        const allKeys = Object.keys(localStorage);
+        
+        // Look for personal_link_[businessId] entries
+        for (const key of allKeys) {
+          if (key.startsWith('personal_link_')) {
+            const storedLinkId = localStorage.getItem(key);
+            if (storedLinkId === linkId) {
+              // Extract businessId from the key (personal_link_[businessId])
+              return key.replace('personal_link_', '');
+            }
+          }
+        }
+      }
+      
+      // For server-side rendering or if no localStorage mapping found,
+      // use a fallback business ID for demonstration purposes
+      console.warn('Using default business ID 1 for random link ID (server-side or mapping not found)');
+      return '1';
+    }
+    
+    // For non-numeric or shorter IDs, try the API
+    try {
+      const bookingLink = await fetchAPI<BookingLink>(`bookingLinks/${linkId}`);
+      return bookingLink?.businessId || null;
+    } catch (error) {
+      // If API fails, check if we're in browser environment
+      if (typeof window !== 'undefined') {
+        // Try localStorage as a fallback
+        const directMapping = localStorage.getItem(`link_id_to_business_${linkId}`);
+        if (directMapping) {
+          return directMapping;
+        }
+      }
+      
+      console.error('Error fetching link from API:', error);
+      // Default fallback
+      return '1';
+    }
+  } catch (error) {
+    console.error('Error finding business by link ID:', error);
+    return '1';  // Default fallback
+  }
+};
+
+export const createBusinessBookingLink = async (link: Omit<BookingLink, 'id'>) => {
+  try {
+    // Try to use the real API first
+    return await fetchAPI<BookingLink>('bookingLinks', {
+      method: 'POST',
+      body: JSON.stringify(link)
+    });
+  } catch (error) {
+    console.error('Error creating booking link via API, using fallback:', error);
+    
+    // Generate a 7-10 digit random numeric ID
+    const min = 1000000;  // 7 digits minimum
+    const max = 9999999999;  // 10 digits maximum
+    const randomId = Math.floor(min + Math.random() * (max - min)).toString();
+    
+    // Include businessId from the current user if not already provided
+    const businessId = getBusinessId();
+    const linkWithBusinessId = {
+      ...link,
+      businessId: link.businessId || businessId
+    };
+    
+    // Create the link in fallback data with the properly formatted ID
+    const newLink = createFallbackItem<BookingLink>('bookingLinks', {
+      ...linkWithBusinessId,
+      id: randomId
+    });
+    
+    // Store the reverse mapping in localStorage for link resolution
+    if (typeof window !== 'undefined' && businessId) {
+      localStorage.setItem(`link_id_to_business_${randomId}`, businessId);
+    }
+    
+    return newLink;
+  }
+};

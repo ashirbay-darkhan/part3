@@ -1,19 +1,15 @@
 import { Metadata } from 'next';
-import { WeekCalendarView } from '@/components/calendar/week-view';
+import { CalendarView } from '@/components/calendar/calendar-view';
 
 export const metadata: Metadata = {
-  title: 'Staff Calendar | B2B Booking Platform',
-  description: 'View and manage appointments for your staff',
+  title: 'Calendar',
+  description: 'View and manage your appointments',
 };
 
 export default function CalendarPage() {
   return (
-    <div className="max-w-full mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Staff Calendar</h1>
-      </div>
-      
-      <WeekCalendarView />
+    <div className="h-[calc(100vh-60px)] w-full overflow-hidden">
+      <CalendarView />
     </div>
   );
 } 

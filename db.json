@@ -55,13 +55,16 @@
     {
       "name": "asdasd",
       "email": "pdmitry314@gmail.com",
-      "password": "asdasdasd",
       "role": "staff",
       "businessId": "1741098049512",
       "businessName": "Nike",
       "id": "1741434054062",
       "isVerified": true,
-      "avatar": "https://ui-avatars.com/api/?name=asdasd&background=7C3AED&color=fff"
+      "avatar": "https://ui-avatars.com/api/?name=asdasd&background=7C3AED&color=fff",
+      "serviceIds": [
+        "I3yYFSN",
+        "o2ukp7W"
+      ]
     },
     {
       "name": "new",
@@ -92,6 +95,19 @@
         "EAdWkId",
         "vTk5twi"
       ]
+    },
+    {
+      "name": "Nikita",
+      "email": "nikita@gmail.com",
+      "serviceIds": [
+        "I3yYFSN",
+        "o2ukp7W"
+      ],
+      "businessId": "1741098049512",
+      "businessName": "Nike",
+      "password": "password123",
+      "id": "1741765967361",
+      "isVerified": true
     }
   ],
   "businesses": [
@@ -116,7 +132,7 @@
   ],
   "services": [
     {
-      "name": "asdasd",
+      "name": "regular haicut",
       "description": "asdasd",
       "duration": 60,
       "price": 12123,
@@ -150,6 +166,15 @@
       "category": "Haircut",
       "businessId": "1",
       "id": "vTk5twi"
+    },
+    {
+      "name": "Haicut",
+      "description": "Lorem ipsum",
+      "duration": 60,
+      "price": 3000,
+      "category": "Haircut",
+      "businessId": "1741098049512",
+      "id": "o2ukp7W"
     }
   ],
   "bookingLinks": [
@@ -174,6 +199,21 @@
       "url": "n826237.alteg.io",
       "employeeId": "1",
       "businessId": "1"
+    },
+    {
+      "name": "фыв",
+      "type": "General",
+      "url": "n587815.alteg.io",
+      "businessId": "1",
+      "id": "nZGPb8i"
+    },
+    {
+      "name": "asdasdasd",
+      "type": "General",
+      "employeeId": "",
+      "employeeName": "",
+      "businessId": "1741098049512",
+      "id": "ILe7cQ8"
     }
   ],
   "appointments": [
@@ -418,6 +458,128 @@
       "duration": 60,
       "status": "Arrived",
       "price": 12123
+    },
+    {
+      "clientId": "leJddoX",
+      "employeeId": "2",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-13",
+      "startTime": "09:30",
+      "endTime": "10:30",
+      "duration": 60,
+      "status": "Pending",
+      "comment": "Lorem Ipsum",
+      "price": 12123,
+      "id": "ZLBAlOe"
+    },
+    {
+      "clientId": "0zYkzAJ",
+      "employeeId": "1741435008600",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-11",
+      "startTime": "09:30",
+      "endTime": "10:30",
+      "duration": 60,
+      "status": "Pending",
+      "comment": "",
+      "price": 12123,
+      "id": "0dav9PK"
+    },
+    {
+      "clientId": "leJddoX",
+      "employeeId": "1741435008600",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-12",
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "duration": 60,
+      "status": "Pending",
+      "comment": "Lorem Ipsum",
+      "price": 12123,
+      "id": "EjToH3u"
+    },
+    {
+      "clientId": "leJddoX",
+      "employeeId": "1741435008600",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-12",
+      "startTime": "09:30",
+      "endTime": "10:30",
+      "duration": 60,
+      "status": "Pending",
+      "comment": "Lorem Ipsum",
+      "price": 12123,
+      "id": "Paef-Ui"
+    },
+    {
+      "clientId": "C2-9zfm",
+      "employeeId": "1741434054062",
+      "serviceId": "o2ukp7W",
+      "date": "2025-03-12",
+      "startTime": "09:30",
+      "endTime": "10:30",
+      "duration": 60,
+      "status": "No-Show",
+      "comment": "asd",
+      "price": 3000,
+      "businessId": "1741098049512",
+      "id": "IVKmta3"
+    },
+    {
+      "clientId": "Orxrq0h",
+      "employeeId": "1",
+      "serviceId": "Rkg6NaH",
+      "date": "2025-03-12",
+      "startTime": "14:00",
+      "endTime": "15:00",
+      "duration": 60,
+      "status": "Pending",
+      "comment": "",
+      "price": 12123,
+      "businessId": "1741098049512",
+      "id": "yOCl8-g"
+    },
+    {
+      "clientId": "lFjCTF6",
+      "employeeId": "1741434054062",
+      "serviceId": "I3yYFSN",
+      "date": "2025-03-14",
+      "startTime": "12:00",
+      "endTime": "12:35",
+      "duration": 35,
+      "status": "Pending",
+      "comment": "",
+      "price": 2000,
+      "businessId": "1741098049512",
+      "id": "NLwgQM3"
+    },
+    {
+      "clientId": "C2-9zfm",
+      "employeeId": "1741765967361",
+      "serviceId": "I3yYFSN",
+      "date": "2025-03-13",
+      "startTime": "12:00",
+      "endTime": "12:35",
+      "duration": 35,
+      "status": "Pending",
+      "comment": "asd",
+      "price": 2000,
+      "businessId": "1741098049512",
+      "id": "0p8xBGl"
+    },
+    {
+      "clientId": "C2-9zfm",
+      "employeeId": "1741434054062",
+      "serviceId": "I3yYFSN",
+      "date": "2025-03-13",
+      "startTime": "13:00",
+      "endTime": "13:35",
+      "duration": 35,
+      "status": "Pending",
+      "comment": "",
+      "price": 2000,
+      "businessId": "1741098049512",
+      "id": "71hKxeH"
     }
   ],
   "clients": [
@@ -440,6 +602,56 @@
       "lastVisit": "2025-02-20T14:30:00",
       "notes": "Prefers natural dyes",
       "businessId": "1"
+    },
+    {
+      "name": "Дархан",
+      "phone": "+77474894939",
+      "email": "darkhan.ashirbay01@gmail.com",
+      "totalVisits": 0,
+      "notes": "Lorem Ipsum",
+      "businessId": "1",
+      "lastVisit": "2025-03-10T15:40:58.920Z",
+      "id": "leJddoX"
+    },
+    {
+      "name": "Дархан",
+      "phone": "77789643981",
+      "email": "",
+      "totalVisits": 0,
+      "notes": "",
+      "businessId": "1",
+      "lastVisit": "2025-03-10T15:58:39.448Z",
+      "id": "0zYkzAJ"
+    },
+    {
+      "name": "Notion clone ",
+      "phone": "+77474894939",
+      "email": "",
+      "totalVisits": 0,
+      "notes": "",
+      "businessId": "1741098049512",
+      "lastVisit": "2025-03-11T12:05:49.154Z",
+      "id": "C2-9zfm"
+    },
+    {
+      "name": "asd",
+      "phone": "7789643981",
+      "email": "",
+      "totalVisits": 0,
+      "notes": "",
+      "businessId": "1741098049512",
+      "lastVisit": "2025-03-11T12:06:57.741Z",
+      "id": "Orxrq0h"
+    },
+    {
+      "name": "Notion clone ",
+      "phone": "77789643981",
+      "email": "",
+      "totalVisits": 0,
+      "notes": "",
+      "businessId": "1741098049512",
+      "lastVisit": "2025-03-11T12:29:31.398Z",
+      "id": "lFjCTF6"
     }
   ]
 }

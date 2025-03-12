@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import { BookingLink } from '@/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,48 +9,30 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/alert-dialog";
 
-interface DeleteLinkDialogProps {
-  link: BookingLink;
+export interface DeleteLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  linkName: string;
 }
 
-export function DeleteLinkDialog({
-  link,
-  open,
-  onOpenChange,
-  onConfirm,
-}: DeleteLinkDialogProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    await onConfirm();
-    setIsDeleting(false);
-  };
-
+export function DeleteLinkDialog({ open, onOpenChange, onConfirm, linkName }: DeleteLinkDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Booking Link</AlertDialogTitle>
+          <AlertDialogTitle>Delete booking link</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete the booking link "{link.name}"? This action cannot be undone.
+            Are you sure you want to delete the booking link "{linkName}"? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-          <Button 
-            variant="destructive" 
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            {isDeleting ? 'Deleting...' : 'Delete'}
-          </Button>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Delete
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

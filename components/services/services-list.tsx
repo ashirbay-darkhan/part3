@@ -154,11 +154,16 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                {service.category && (
-                  <Badge variant="secondary" className="mt-1">
-                    {service.category}
-                  </Badge>
-                )}
+                <div className="flex gap-2 items-center mt-1">
+                  {service.category && (
+                    <Badge 
+                      variant="secondary" 
+                      className="text-xs font-normal"
+                    >
+                      {service.category}
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground line-clamp-2 h-10">

@@ -5,15 +5,14 @@ export type User = {
   avatar?: string;
 };
 
-export type BookingLink = {
+export interface BookingLink {
   id: string;
   name: string;
-  type: 'General' | 'Employee' | 'Main';
-  url: string;
+  type: 'General' | 'Employee';
   employeeId?: string;
-  employeeName?: string; // Added to display employee names
+  employeeName?: string;
   businessId?: string;
-};
+}
 
 export type Service = {
   id: string;
@@ -39,6 +38,7 @@ export type Appointment = {
   status: AppointmentStatus;
   comment?: string;
   price: number;
+  businessId: string; // ID of the business this appointment belongs to
 };
 
 export type Client = {
@@ -49,6 +49,7 @@ export type Client = {
   totalVisits: number;
   lastVisit?: string; // ISO формат
   notes?: string;
+  businessId: string; // ID of the business this client belongs to
 };
 
 // Business type
@@ -89,5 +90,13 @@ export type BusinessAppointment = Appointment & {
 
 export type BusinessClient = Client & {
   businessId: string;
+};
+
+export type ServiceCategory = {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string; // For visual identification
+  businessId?: string;
 };
 

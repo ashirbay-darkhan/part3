@@ -16,7 +16,8 @@ import {
   LogOut,
   Menu,
   X,
-  Scissors
+  Scissors,
+  Link as LinkIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/authContext';
@@ -228,6 +229,13 @@ export function Sidebar() {
               icon={<Calendar className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
               label="Online booking"
               isActive={pathname.includes('/online-booking')}
+            />
+
+            <SidebarItem
+              href="/booking-links"
+              icon={<LinkIcon className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
+              label="Booking Links"
+              isActive={pathname.includes('/booking-links')}
             />
           </div>
 

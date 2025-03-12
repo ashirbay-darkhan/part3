@@ -1,269 +1,260 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { BusinessUser, Service } from '@/types';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/auth/authContext';
 import { getBusinessServices } from '@/lib/api/staff-service';
-import { Avatar } from '@/components/ui/avatar-fallback';
-
-const staffFormSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email address'),
-  serviceIds: z.array(z.string()),
-  avatar: z.string().optional(),
-});
-
-type StaffFormValues = z.infer<typeof staffFormSchema>;
 
 interface StaffFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: StaffFormValues) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>;
   initialData?: BusinessUser | null;
 }
 
 export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormProps) {
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Basic form state
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [avatar, setAvatar] = useState('');
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  const { user } = useAuth();
+
+  // Reset form when dialog opens or initialData changes
+  useEffect(() => {
+    if (isOpen) {
+      // Reset form with initial data or empty values
+      setName(initialData?.name || '');
+      setEmail(initialData?.email || '');
+      setAvatar(initialData?.avatar || '');
+      setSelectedServices(initialData?.serviceIds || []);
+      
+      // Load services only once when dialog opens
+      if (user?.businessId && services.length === 0) {
+        loadServices(user.businessId);
+      }
+    }
+  }, [isOpen, initialData]);
   
   // Load services
-  useEffect(() => {
-    const fetchServices = async () => {
-      if (user?.businessId) {
-        try {
-          const servicesData = await getBusinessServices(user.businessId);
-          setServices(servicesData);
-        } catch (error) {
-          console.error('Failed to load services:', error);
-        }
-      }
-    };
-    
-    fetchServices();
-  }, [user?.businessId]);
-  
-  // Setup form with initial values
-  const form = useForm<StaffFormValues>({
-    resolver: zodResolver(staffFormSchema),
-    defaultValues: initialData 
-      ? {
-          name: initialData.name,
-          email: initialData.email,
-          serviceIds: initialData.serviceIds || [],
-          avatar: initialData.avatar || '',
-        }
-      : {
-          name: '',
-          email: '',
-          serviceIds: [],
-          avatar: '',
-        },
-  });
-
-  // Update form values when initialData changes
-  useEffect(() => {
-    if (initialData) {
-      form.reset({
-        name: initialData.name,
-        email: initialData.email,
-        serviceIds: initialData.serviceIds || [],
-        avatar: initialData.avatar || '',
-      });
-    } else {
-      form.reset({
-        name: '',
-        email: '',
-        serviceIds: [],
-        avatar: '',
-      });
-    }
-  }, [initialData, form]);
-
-  const handleSubmit = async (data: StaffFormValues) => {
+  const loadServices = async (businessId: string) => {
     try {
-      setIsSubmitting(true);
-      await onSubmit(data);
-      toast({
-        title: initialData ? 'Staff updated' : 'Staff created',
-        description: initialData
-          ? 'Staff member has been updated successfully.'
-          : 'New staff member has been created successfully.',
-      });
-      form.reset();
-      onClose();
+      const data = await getBusinessServices(businessId);
+      setServices(data);
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: `Failed to ${initialData ? 'update' : 'create'} staff member. Please try again.`,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
+      console.error('Failed to load services:', error);
     }
   };
 
+  // Generate avatar URL
+  const generateAvatar = () => {
+    if (!name) return;
+    const url = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
+    setAvatar(url);
+  };
+
+  // Toggle service selection
+  const toggleService = (serviceId: string) => {
+    setSelectedServices(prev => 
+      prev.includes(serviceId)
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name || !email) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      await onSubmit({
+        name,
+        email,
+        avatar,
+        serviceIds: selectedServices
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Failed to save staff member');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{initialData ? 'Edit Staff Member' : 'Add New Staff Member'}</DialogTitle>
-          <DialogDescription>
-            {initialData 
-              ? 'Update staff member details below.' 
-              : 'Fill in the details below to create a new staff member.'}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">
+            {initialData ? 'Edit Staff Member' : 'Add New Staff Member'}
+          </h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <p className="text-gray-600 mb-4">
+          {initialData 
+            ? 'Update staff member details below.' 
+            : 'Fill in the details below to create a new staff member.'}
+        </p>
+        
+        <form onSubmit={handleSubmit}>
+          {/* Name field */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="John Doe"
+              required
             />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="john@example.com" type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+          
+          {/* Email field */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="john@example.com"
+              required
             />
-            
-            <FormField
-              control={form.control}
-              name="avatar"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Profile Picture</FormLabel>
-                  <div className="flex items-center gap-4">
-                    <Avatar 
-                      src={field.value} 
-                      name={form.getValues("name") || "Staff"} 
-                      className="w-16 h-16" 
-                    />
-                    <FormControl>
-                      <Input 
-                        placeholder="https://example.com/avatar.jpg" 
-                        type="url" 
-                        {...field} 
-                      />
-                    </FormControl>
+          </div>
+          
+          {/* Avatar field */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1">Profile Picture</label>
+            <div className="flex flex-col sm:flex-row items-start gap-4">
+              <div className="flex flex-col items-center">
+                {avatar ? (
+                  <img 
+                    src={avatar} 
+                    alt={name || "Staff"} 
+                    className="w-20 h-20 rounded-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Staff')}`;
+                    }}
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xl font-bold">
+                    {name ? name.charAt(0).toUpperCase() : '?'}
                   </div>
-                  <FormDescription>
-                    Enter a URL for the staff member's profile picture
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                )}
+              </div>
+              <div className="flex-1 w-full">
+                <input
+                  type="url"
+                  value={avatar}
+                  onChange={(e) => setAvatar(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md mb-2"
+                  placeholder="https://example.com/avatar.jpg"
+                />
+                <button
+                  type="button"
+                  onClick={generateAvatar}
+                  className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded border border-blue-200 hover:bg-blue-100"
+                >
+                  Generate random avatar
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Services selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2">Services</label>
+            <p className="text-sm text-gray-500 mb-3">
+              Select which services this staff member can provide
+            </p>
             
-            <div className="space-y-2">
-              <FormLabel>Services</FormLabel>
-              <p className="text-sm text-slate-500 mb-3">
-                Select which services this staff member can provide
-              </p>
-              
+            <div className="border rounded-md p-2 max-h-[200px] overflow-y-auto bg-gray-50">
               {services.length === 0 ? (
-                <div className="text-sm text-slate-500">No services available. Add services in the Services page first.</div>
+                <p className="text-gray-500 text-sm p-2">No services available.</p>
               ) : (
-                <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto p-2 border rounded-md">
-                  {services.map((service) => (
-                    <FormField
-                      key={service.id}
-                      control={form.control}
-                      name="serviceIds"
-                      render={({ field }) => {
-                        return (
-                          <FormItem key={service.id} className="flex flex-row items-start space-x-3 space-y-0 mb-1">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value?.includes(service.id)}
-                                onCheckedChange={(checked) => {
-                                  return checked
-                                    ? field.onChange([...field.value, service.id])
-                                    : field.onChange(
-                                        field.value?.filter(
-                                          (value) => value !== service.id
-                                        )
-                                      );
-                                }}
-                              />
-                            </FormControl>
-                            <div className="grid gap-1.5 leading-none">
-                              <FormLabel className="font-medium cursor-pointer text-base">
-                                {service.name}
-                              </FormLabel>
-                              <p className="text-sm text-slate-500">
-                                {service.price ? `$${service.price}` : ''} 
-                                {service.duration ? ` • ${service.duration} min` : ''}
-                                {service.category ? ` • ${service.category}` : ''}
-                              </p>
+                <div className="space-y-2">
+                  {services.map((service) => {
+                    const isSelected = selectedServices.includes(service.id);
+                    return (
+                      <div
+                        key={service.id}
+                        className={`p-3 rounded-md cursor-pointer ${
+                          isSelected 
+                            ? 'bg-blue-100 border-blue-300 border' 
+                            : 'hover:bg-gray-100 border border-transparent'
+                        }`}
+                        onClick={() => toggleService(service.id)}
+                      >
+                        <div className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleService(service.id)}
+                            className="mt-1"
+                          />
+                          <div>
+                            <div className="font-medium">{service.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {service.price ? `$${service.price}` : ''} 
+                              {service.duration ? ` • ${service.duration} min` : ''}
+                              {service.category ? ` • ${service.category}` : ''}
                             </div>
-                          </FormItem>
-                        );
-                      }}
-                    />
-                  ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
-            
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onClose}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Saving...' : initialData ? 'Update' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          </div>
+          
+          {/* Form buttons */}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 border rounded-md hover:bg-gray-50"
+              disabled={isLoading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              disabled={isLoading}
+            >
+              {isLoading 
+                ? (initialData ? 'Updating...' : 'Creating...') 
+                : (initialData ? 'Update Staff' : 'Create Staff')
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 } 

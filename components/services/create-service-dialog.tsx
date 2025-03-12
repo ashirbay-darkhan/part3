@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import { createBusinessService } from '@/lib/api';
+import { createBusinessService, getBusinessServiceCategories } from '@/lib/api';
+import { ServiceCategory } from '@/types';
 import {
   Dialog,
   DialogContent,
@@ -37,19 +38,6 @@ const serviceFormSchema = z.object({
 
 type ServiceFormValues = z.infer<typeof serviceFormSchema>;
 
-// Predefined category options
-const categoryOptions = [
-  'Haircut', 
-  'Styling', 
-  'Color', 
-  'Treatment', 
-  'Makeup', 
-  'Skincare',
-  'Nails',
-  'Massage',
-  'Other'
-];
-
 interface CreateServiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -62,6 +50,8 @@ export function CreateServiceDialog({
   onSuccess 
 }: CreateServiceDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   
   const {
     register,
@@ -79,6 +69,26 @@ export function CreateServiceDialog({
       category: undefined,
     },
   });
+
+  // Fetch categories when dialog opens
+  useEffect(() => {
+    if (open) {
+      const fetchCategories = async () => {
+        setIsLoadingCategories(true);
+        try {
+          const data = await getBusinessServiceCategories();
+          setCategories(data);
+        } catch (error) {
+          console.error('Failed to load categories:', error);
+          toast.error('Failed to load categories');
+        } finally {
+          setIsLoadingCategories(false);
+        }
+      };
+
+      fetchCategories();
+    }
+  }, [open]);
 
   const onSubmit = async (data: ServiceFormValues) => {
     setIsSubmitting(true);
@@ -178,14 +188,16 @@ export function CreateServiceDialog({
             <Label htmlFor="category">Category</Label>
             <Select
               onValueChange={(value) => setValue('category', value)}
+              disabled={isSubmitting || isLoadingCategories}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
+              <SelectTrigger id="category">
+                <SelectValue placeholder={isLoadingCategories ? "Loading categories..." : "Select a category"} />
               </SelectTrigger>
               <SelectContent>
-                {categoryOptions.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+                <SelectItem value="Uncategorized">Uncategorized</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.name}>
+                    {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>

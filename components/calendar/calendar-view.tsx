@@ -340,7 +340,7 @@ export function CalendarView({ onTodayClick }: CalendarViewProps) {
       </div>
       
       {/* Calendar body - Scrollable area with minimum height to ensure all hours are shown */}
-      <div className="flex flex-1 overflow-y-auto overflow-x-hidden" role="grid" aria-label="Weekly calendar">
+      <div className="flex flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide" role="grid" aria-label="Weekly calendar">
         {/* Time labels column */}
         <div className="w-20 flex-shrink-0 border-r border-gray-300 bg-white shadow-sm z-10 sticky left-0" role="rowheader">
           <div className="relative pt-6">
@@ -448,6 +448,18 @@ export function CalendarView({ onTodayClick }: CalendarViewProps) {
           </div>
         </div>
       )}
+      
+      {/* CSS to hide scrollbars */}
+      <style jsx global>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .scrollbar-hide {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+        }
+      `}</style>
     </div>
   );
 } 

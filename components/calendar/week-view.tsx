@@ -300,7 +300,7 @@ export function WeekCalendarView() {
       {/* Calendar body - Scrollable area */}
       <div className="flex flex-1 overflow-hidden">
         {/* This div makes both time column and days columns scroll together */}
-        <div className="flex flex-1 overflow-y-auto">
+        <div className="flex flex-1 overflow-y-auto scrollbar-hide">
           {/* Time labels column */}
           <div className="w-16 flex-shrink-0 border-r border-gray-200 bg-white">
             <div className="relative">
@@ -329,7 +329,7 @@ export function WeekCalendarView() {
           </div>
           
           {/* Days columns */}
-          <div className="flex-1 overflow-x-auto">
+          <div className="flex-1 overflow-x-auto scrollbar-hide">
             <div className="flex h-full min-w-max">
               {displayDays.map((day, dayIndex) => {
                 const isWeekendDay = isWeekend(day);
@@ -377,6 +377,18 @@ export function WeekCalendarView() {
           </div>
         </div>
       </div>
+      
+      {/* CSS to hide scrollbars */}
+      <style jsx global>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        .scrollbar-hide {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { CalendarView } from '@/components/calendar/calendar-view';
+import CalendarClient from './calendar-client';
 
 export const metadata: Metadata = {
   title: 'Calendar',
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function CalendarPage() {
   return (
     <div className="h-[calc(100vh-60px)] w-full overflow-hidden">
-      <CalendarView />
+      <CalendarClient />
     </div>
   );
 } 

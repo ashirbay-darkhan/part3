@@ -116,18 +116,6 @@ export function Sidebar() {
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="w-64 bg-white dark:bg-gray-900 border-r border-slate-200 dark:border-gray-800 flex flex-col h-screen overflow-hidden">
-          {/* User Info at the top */}
-          <div className="p-4 border-b border-slate-200 dark:border-gray-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-pawly-teal flex items-center justify-center text-white">
-              <span>{user?.name?.charAt(0) || 'U'}</span>
-            </div>
-            <div className="flex-1">
-              <h3 className="font-medium text-pawly-dark-blue dark:text-white">
-                {user?.name || 'User'}
-              </h3>
-            </div>
-            <ChevronDown className="h-5 w-5 text-pawly-dark-blue dark:text-white" />
-          </div>
 
           {/* Calendar */}
           <div className="px-3 py-4 border-b border-slate-200 dark:border-pawly-dark-blue/80">
@@ -222,13 +210,6 @@ export function Sidebar() {
               icon={<LineChart className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
               label="Analytics"
               isActive={pathname.includes('/analytics')}
-            />
-
-            <SidebarItem
-              href="/online-booking"
-              icon={<Calendar className="h-5 w-5 text-pawly-dark-blue dark:text-white" />}
-              label="Online booking"
-              isActive={pathname.includes('/online-booking')}
             />
 
             <SidebarItem

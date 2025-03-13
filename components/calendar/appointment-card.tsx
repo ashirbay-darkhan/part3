@@ -132,7 +132,7 @@ export function AppointmentCard({ appointment, onClick, onStatusChange, style }:
       </div>
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal={true}>
-        <DialogContent className="p-0 !max-w-[1000px] !w-[90vw] h-[90vh] sm:!max-w-[1300px]">
+        <DialogContent className="p-0 !max-w-[1000px] !w-[90vw] h-[90vh] sm:!max-w-[500px]">
           <DialogHeader className="sr-only">
             <DialogTitle>Appointment Details</DialogTitle>
           </DialogHeader>

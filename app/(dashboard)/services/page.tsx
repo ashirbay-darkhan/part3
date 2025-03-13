@@ -133,12 +133,12 @@ export default function ServicesPage() {
     <div className="max-w-5xl mx-auto">
       <div className="mb-8">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services</h1>
-            <div className="flex items-center text-sm text-slate-500 mt-1">
-              <span>Manage your services and service categories</span>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Services</h1>
+              <div className="flex items-center text-sm text-slate-500 mt-1">
+                <span>Manage your services and service categories</span>
+              </div>
             </div>
-          </div>
           <div className="flex space-x-2">
             <Tabs value={mainTab} onValueChange={setMainTab} className="hidden sm:flex">
               <TabsList>

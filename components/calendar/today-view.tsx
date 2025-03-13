@@ -1,16 +1,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { format, addDays, startOfWeek, endOfWeek, isSameDay, parseISO, addWeeks, subWeeks, isWeekend } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Loader2 } from 'lucide-react';
+import { format, isSameDay, parseISO } from 'date-fns';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { AppointmentCard } from './appointment-card';
 import { getBusinessAppointments, getBusinessStaff } from '@/lib/api';
 import { Appointment, User } from '@/types';
@@ -83,29 +76,22 @@ const calculateAppointmentStyle = (appointment: Appointment) => {
   };
 };
 
-interface CalendarViewProps {
-  onTodayClick?: () => void;
+interface TodayViewProps {
+  onBackToWeekView?: () => void;
 }
 
-export function CalendarView({ onTodayClick }: CalendarViewProps) {
+export function TodayView({ onBackToWeekView }: TodayViewProps) {
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [staffMembers, setStaffMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Calculate week days
-  const weekDays = useMemo(() => {
-    const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Start on Monday
-    return Array.from({ length: 7 }).map((_, i) => addDays(start, i));
-  }, [currentDate]);
-  
   // Time slots for the day
   const timeSlots = useMemo(() => generateTimeSlots(), []);
   
-  // Fetch staff and appointments data
+  // Fetch data function
   const fetchData = useCallback(async () => {
     if (!user?.businessId) return;
     
@@ -121,51 +107,39 @@ export function CalendarView({ onTodayClick }: CalendarViewProps) {
       
       setStaffMembers(staffData);
       setAppointments(appointmentsData);
-      
-      // Auto-select the first staff member if none is selected
-      if (!selectedStaffId && staffData.length > 0) {
-        setSelectedStaffId(staffData[0].id);
-      }
     } catch (error) {
       console.error('Error fetching calendar data:', error);
       setError('Failed to load calendar data. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [user?.businessId, selectedStaffId]);
+  }, [user?.businessId]);
   
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, currentDate]);
   
-  // Filter appointments based on selected staff and current week
-  const filteredAppointments = useMemo(() => {
-    if (!selectedStaffId) return [];
-    
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
-    
-    return appointments.filter(appointment => {
-      // Only show appointments for selected staff
-      if (appointment.employeeId !== selectedStaffId) return false;
-      
-      // Filter by current week
-      const appointmentDate = parseISO(appointment.date);
-      return appointmentDate >= weekStart && appointmentDate <= weekEnd;
-    });
-  }, [appointments, selectedStaffId, currentDate]);
+  // Filter appointments for the current date
+  const todayAppointments = useMemo(() => 
+    appointments.filter(appointment => 
+      isSameDay(new Date(appointment.date), currentDate)
+    ), [appointments, currentDate]
+  );
   
   // Navigation functions
-  const goToToday = useCallback(() => {
-    setCurrentDate(new Date());
-    // If onTodayClick is provided, call it to switch to today view
-    if (onTodayClick) {
-      onTodayClick();
-    }
-  }, [onTodayClick]);
+  const goToToday = useCallback(() => setCurrentDate(new Date()), []);
   
-  const goToPrevWeek = useCallback(() => setCurrentDate(prev => subWeeks(prev, 1)), []);
-  const goToNextWeek = useCallback(() => setCurrentDate(prev => addWeeks(prev, 1)), []);
+  const goToPreviousDay = useCallback(() => {
+    const prevDay = new Date(currentDate);
+    prevDay.setDate(prevDay.getDate() - 1);
+    setCurrentDate(prevDay);
+  }, [currentDate]);
+  
+  const goToNextDay = useCallback(() => {
+    const nextDay = new Date(currentDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    setCurrentDate(nextDay);
+  }, [currentDate]);
   
   // Refresh appointments after changes
   const refreshAppointments = useCallback(async () => {
@@ -173,6 +147,7 @@ export function CalendarView({ onTodayClick }: CalendarViewProps) {
     
     try {
       setIsLoading(true);
+      setError(null);
       const updatedAppointments = await getBusinessAppointments(user.businessId);
       setAppointments(updatedAppointments);
     } catch (error) {
@@ -183,17 +158,18 @@ export function CalendarView({ onTodayClick }: CalendarViewProps) {
     }
   }, [user?.businessId]);
   
-  // Get title for the calendar header
-  const calendarTitle = `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`;
+  // Format date for display
+  const formattedDate = format(currentDate, "d MMMM, EEEE");
+  const isToday = isSameDay(currentDate, new Date());
   
   // Render time slot cell - extracted to reduce code duplication
-  const renderTimeSlotCell = useCallback((day: Date, time: string) => {
+  const renderTimeSlotCell = useCallback((staffId: string, time: string) => {
     const [hours, minutes] = time.split(':').map(Number);
     const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     
     return (
       <div 
-        key={`${day.toISOString()}-${time}`} 
+        key={`${staffId}-${time}`} 
         className={`border-b group relative ${
           minutes === 0 
             ? 'border-gray-300' 
@@ -234,15 +210,17 @@ export function CalendarView({ onTodayClick }: CalendarViewProps) {
     );
   }
   
+  // Staff columns header and scrollable content area
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white">
       {/* Calendar header with controls - fixed at top */}
-      <div className="px-2 py-1 border-b flex items-center justify-between gap-2 sticky top-0 z-30 bg-white">
+      <div className="px-2 py-1 border-b flex items-center justify-between sticky top-0 z-30 bg-white">
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={goToToday}
+            disabled={isToday}
             className="bg-white border-gray-300 text-black hover:bg-gray-100"
             aria-label="Go to today"
           >
@@ -253,97 +231,74 @@ export function CalendarView({ onTodayClick }: CalendarViewProps) {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={goToPrevWeek} 
+              onClick={goToPreviousDay} 
               className="text-gray-700"
-              aria-label="Previous week"
+              aria-label="Previous day"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={goToNextWeek} 
+              onClick={goToNextDay} 
               className="text-gray-700"
-              aria-label="Next week"
+              aria-label="Next day"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
           
-          <h2 className="font-medium text-base">
-            {calendarTitle}
+          <h2 className="font-medium text-lg">
+            {formattedDate}
           </h2>
           
           <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-            Week View
+            Today View
           </span>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {isLoading && (
-            <Loader2 className="h-4 w-4 animate-spin text-blue-500 mr-2" />
+          
+          {onBackToWeekView && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBackToWeekView}
+              className="ml-2"
+              aria-label="Switch to week view"
+            >
+              Back to Week
+            </Button>
           )}
           
-          {/* Staff selection dropdown */}
-          <Select 
-            value={selectedStaffId} 
-            onValueChange={setSelectedStaffId}
-            disabled={isLoading || staffMembers.length === 0}
-          >
-            <SelectTrigger className="w-[180px] bg-white border-gray-300">
-              <SelectValue placeholder="Select staff member" />
-            </SelectTrigger>
-            <SelectContent>
-              {staffMembers.length === 0 ? (
-                <SelectItem value="no-staff" disabled>No staff members available</SelectItem>
-              ) : (
-                staffMembers.map(staff => (
-                  <SelectItem key={staff.id} value={staff.id}>
-                    {staff.name}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
+          {isLoading && (
+            <Loader2 className="h-4 w-4 animate-spin text-blue-500 ml-2" />
+          )}
         </div>
       </div>
       
-      {/* Day headers row - fixed below main header */}
-      <div className="flex border-b border-gray-300 sticky top-[32px] z-20 bg-white">
-        <div className="w-20 flex-shrink-0 border-r border-gray-300"></div>
-        <div className="flex-1">
-          <div className="flex divide-x divide-gray-300">
-            {weekDays.map((day, index) => (
-              <div
-                key={day.toISOString()}
-                className={`flex-1 h-14 flex flex-col items-center justify-center ${
-                  isWeekend(day) ? 'bg-gray-50' : ''
-                } ${
-                  isSameDay(day, new Date()) ? 'bg-blue-50' : ''
-                } ${index === 0 ? 'border-l border-gray-300' : ''}`}
-                aria-label={format(day, 'EEEE, MMMM d, yyyy')}
-              >
-                <div className={`text-sm font-normal text-gray-800 ${
-                  isSameDay(day, new Date()) ? 'text-blue-600' : ''
-                }`}>
-                  {format(day, 'EEEE')}
-                </div>
-                <div className={`text-xl font-medium ${
-                  isSameDay(day, new Date()) ? 'text-blue-600' : ''
-                }`}>
-                  {format(day, 'd')}
-                </div>
+      {/* Unified scrollable container - The only scrollable area */}
+      <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden" role="grid" aria-label="Today's schedule">
+        {/* Staff columns header - sticky */}
+        <div className="flex border-b sticky top-0 z-20 bg-white">
+          <div className="w-20 flex-shrink-0 border-r border-gray-300" role="presentation"></div>
+          {staffMembers.map(staff => (
+            <div 
+              key={staff.id} 
+              className="flex-1 min-w-[180px] p-3 flex flex-col items-center justify-center border-r border-gray-300"
+              role="columnheader"
+              aria-label={`Staff: ${staff.name}`}
+            >
+              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-1">
+                <span className="text-sm font-medium">{staff.name.charAt(0)}</span>
               </div>
-            ))}
-          </div>
+              <p className="text-sm font-medium">{staff.name}</p>
+              <p className="text-xs text-gray-500">Staff</p>
+            </div>
+          ))}
         </div>
-      </div>
-      
-      {/* Calendar body - Scrollable area with minimum height to ensure all hours are shown */}
-      <div className="flex flex-1 overflow-y-auto overflow-x-hidden" role="grid" aria-label="Weekly calendar">
-        {/* Time labels column */}
-        <div className="w-20 flex-shrink-0 border-r border-gray-300 bg-white shadow-sm z-10 sticky left-0" role="rowheader">
-          <div className="relative pt-6">
+        
+        {/* Grid content with minimum height to ensure all hours are shown */}
+        <div className="flex flex-1 min-h-[1000px]">
+          {/* Time labels column - sticky */}
+          <div className="w-20 flex-shrink-0 border-r border-gray-300 bg-white pt-6 shadow-sm z-10 sticky left-0" role="rowheader">
             {timeSlots.map(time => {
               const timeLabel = formatTimeDisplay(time);
               const [hours, minutes] = time.split(':').map(Number);
@@ -374,58 +329,55 @@ export function CalendarView({ onTodayClick }: CalendarViewProps) {
               );
             })}
           </div>
-        </div>
-        
-        {/* Days columns */}
-        <div className="flex-1">
-          <div className="flex h-full divide-x divide-gray-300 min-h-[1000px]">
-            {weekDays.map((day, index) => {
-              const isWeekendDay = isWeekend(day);
-              const isToday = isSameDay(day, new Date());
-              
-              // Get appointments for this day
-              const dayAppointments = filteredAppointments.filter(
-                appointment => isSameDay(parseISO(appointment.date), day)
+          
+          {/* Staff columns with appointments */}
+          {staffMembers.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center p-6 text-gray-500">
+              No staff members available. Please add staff to view the calendar.
+            </div>
+          ) : (
+            staffMembers.map((staff, index) => {
+              // Filter appointments for this staff member
+              const staffAppointments = todayAppointments.filter(
+                appt => appt.employeeId === staff.id
               );
               
               return (
                 <div 
-                  key={day.toISOString()} 
-                  className={`flex-1 ${
-                    isWeekendDay ? 'bg-gray-50' : 
-                      isToday ? 'bg-blue-50' :
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                  } ${index === 0 ? 'border-l border-gray-300' : ''}`}
+                  key={staff.id} 
+                  className={`flex-1 min-w-[180px] border-r border-gray-300 relative pt-12 ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                  }`}
                   role="gridcell"
-                  aria-label={format(day, 'EEEE, MMMM d')}
+                  aria-label={`Schedule for ${staff.name}`}
                 >
-                  {/* Time slots background */}
-                  <div className="relative pt-6">
-                    {timeSlots.map(time => renderTimeSlotCell(day, time))}
+                  {/* Time slot grid */}
+                  {timeSlots.map(time => renderTimeSlotCell(staff.id, time))}
+                
+                  {/* Appointments */}
+                  {staffAppointments.map(appointment => {
+                    const style = calculateAppointmentStyle(appointment);
                     
-                    {/* Appointments */}
-                    {dayAppointments.map(appointment => {
-                      const style = calculateAppointmentStyle(appointment);
-                      const adjustedStyle = {
-                        ...style,
-                        top: `calc(${style.top} + 24px)`,
-                      };
-                      
-                      return (
-                        <AppointmentCard
-                          key={appointment.id}
-                          appointment={appointment}
-                          onClick={() => refreshAppointments()}
-                          onStatusChange={refreshAppointments}
-                          style={adjustedStyle}
-                        />
-                      );
-                    })}
-                  </div>
+                    // Adjust style to account for the top padding
+                    const adjustedStyle = {
+                      ...style,
+                      top: `calc(${style.top} + 48px)`, // 48px (12rem) for the padding-top
+                    };
+                    
+                    return (
+                      <AppointmentCard
+                        key={appointment.id}
+                        appointment={appointment}
+                        onClick={() => refreshAppointments()}
+                        onStatusChange={refreshAppointments}
+                        style={adjustedStyle}
+                      />
+                    );
+                  })}
                 </div>
               );
-            })}
-          </div>
+            })
+          )}
         </div>
       </div>
       

@@ -102,12 +102,7 @@ export default function DashboardPage() {
   }
   
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-pawly-dark-blue dark:text-white">Dashboard</h1>
-        <p className="text-slate-500 dark:text-gray-300">{formattedDate}</p>
-      </div>
-      
+    <div className="space-y-6">      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">

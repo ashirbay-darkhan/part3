@@ -108,6 +108,19 @@
       "password": "password123",
       "id": "1741765967361",
       "isVerified": true
+    },
+    {
+      "name": "Richard",
+      "email": "richard@gmail.com",
+      "serviceIds": [
+        "I3yYFSN",
+        "o2ukp7W"
+      ],
+      "businessId": "1741098049512",
+      "businessName": "Nike",
+      "password": "password123",
+      "id": "1741868174674",
+      "isVerified": true
     }
   ],
   "businesses": [
@@ -519,7 +532,7 @@
       "startTime": "09:30",
       "endTime": "10:30",
       "duration": 60,
-      "status": "No-Show",
+      "status": "Pending",
       "comment": "asd",
       "price": 3000,
       "businessId": "1741098049512",
@@ -547,7 +560,7 @@
       "startTime": "12:00",
       "endTime": "12:35",
       "duration": 35,
-      "status": "Pending",
+      "status": "Confirmed",
       "comment": "",
       "price": 2000,
       "businessId": "1741098049512",
@@ -575,11 +588,39 @@
       "startTime": "13:00",
       "endTime": "13:35",
       "duration": 35,
-      "status": "Pending",
+      "status": "No-Show",
       "comment": "",
       "price": 2000,
       "businessId": "1741098049512",
       "id": "71hKxeH"
+    },
+    {
+      "clientId": "8rN4oxK",
+      "employeeId": "1741434054062",
+      "serviceId": "I3yYFSN",
+      "date": "2025-03-13",
+      "startTime": "14:00",
+      "endTime": "14:35",
+      "duration": 35,
+      "status": "Pending",
+      "comment": "",
+      "price": 2000,
+      "businessId": "1741098049512",
+      "id": "hP92KMp"
+    },
+    {
+      "clientId": "8rN4oxK",
+      "employeeId": "1741434054062",
+      "serviceId": "I3yYFSN",
+      "date": "2025-03-14",
+      "startTime": "12:00",
+      "endTime": "12:35",
+      "duration": 35,
+      "status": "Pending",
+      "comment": "",
+      "price": 2000,
+      "businessId": "1741098049512",
+      "id": "ralD3Fn"
     }
   ],
   "clients": [
@@ -652,6 +693,16 @@
       "businessId": "1741098049512",
       "lastVisit": "2025-03-11T12:29:31.398Z",
       "id": "lFjCTF6"
+    },
+    {
+      "name": "Darkhan",
+      "phone": "77474894939",
+      "email": "",
+      "totalVisits": 0,
+      "notes": "",
+      "businessId": "1741098049512",
+      "lastVisit": "2025-03-13T04:13:30.403Z",
+      "id": "8rN4oxK"
     }
   ]
 }

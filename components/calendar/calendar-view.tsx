@@ -41,11 +41,11 @@ const generateTimeSlots = () => {
 const formatTimeDisplay = (time: string) => {
   const [hours, minutes] = time.split(':').map(Number);
   
-  // Only show hour labels (not the minutes)
   if (minutes === 0) {
-    return `${hours}:00`;
+    return { primary: `${hours}`, secondary: '00' };
+  } else {
+    return { primary: '', secondary: '30' };
   }
-  return null; // Return null for half-hour slots
 };
 
 // Calculate appointment position and height
@@ -249,11 +249,12 @@ export function CalendarView() {
                   className={`relative border-b ${minutes === 0 ? 'border-gray-300' : 'border-gray-100'}`}
                   style={{ height: `${HALF_HOUR_HEIGHT}px` }}
                 >
-                  {timeLabel && (
-                    <div className="absolute top-0 right-2 text-xs text-gray-500 -translate-y-1/2">
-                      {timeLabel}
-                    </div>
-                  )}
+                  <div className="absolute top-0 right-2 text-xs -translate-y-1/2 flex">
+                    {timeLabel.primary && (
+                      <span className="font-medium text-gray-800 mr-0.5">{timeLabel.primary}</span>
+                    )}
+                    <span className="text-gray-400">{timeLabel.secondary}</span>
+                  </div>
                 </div>
               );
             })}

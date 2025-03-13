@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { Appointment, Service, Client } from '@/types';
 import { 
   Dialog, 
-  DialogContent, 
+  DialogContent,
   DialogTitle,
   DialogHeader
 } from '@/components/ui/dialog';
 import { Clock, User, Phone } from 'lucide-react';
 import { getService, getClient } from '@/lib/api';
+import { AppointmentDetailView } from '@/components/calendar/appointment-detail';
 
 interface AppointmentCardProps {
   appointment: Appointment;
@@ -89,6 +90,13 @@ export function AppointmentCard({ appointment, onClick, onStatusChange, style }:
     onClick();
   };
   
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    if (onStatusChange) {
+      onStatusChange();
+    }
+  };
+  
   return (
     <>
       <div
@@ -123,89 +131,17 @@ export function AppointmentCard({ appointment, onClick, onStatusChange, style }:
         </div>
       </div>
       
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl flex items-center">
-              <span className={`inline-block w-3 h-3 rounded-full mr-2 ${getCardHeaderColor()}`}></span>
-              Appointment Details
-            </DialogTitle>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen} modal={true}>
+        <DialogContent className="p-0 !max-w-[1000px] !w-[90vw] h-[90vh] sm:!max-w-[1300px]">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Appointment Details</DialogTitle>
           </DialogHeader>
-          
-          <div className="p-4">
-            {isLoading ? (
-              <div className="flex justify-center items-center h-40">
-                <div className="animate-pulse text-gray-400">Loading appointment details...</div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-1">{service?.name}</h3>
-                    <div className="flex items-center text-gray-600">
-                      <Clock className="h-4 w-4 mr-2" />
-                      <span>{appointment.date} • {appointment.startTime} - {appointment.endTime}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-1">{renderStatusTag()}</div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h3 className="font-medium text-gray-900 mb-2 flex items-center">
-                        <User className="h-4 w-4 mr-2 text-gray-500" />
-                        Client Information
-                      </h3>
-                      
-                      <div className="space-y-2">
-                        <div>
-                          <p className="font-medium">{client?.name}</p>
-                          {client?.email && <p className="text-sm text-gray-500">{client.email}</p>}
-                        </div>
-                        
-                        {client?.phone && (
-                          <div className="flex items-center text-sm">
-                            <Phone className="h-3.5 w-3.5 mr-2 text-gray-400" />
-                            <span>{client.phone}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h3 className="font-medium text-gray-900 mb-2">Service Details</h3>
-                      
-                      <div className="space-y-2">
-                        {service?.duration && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-500">Duration</span>
-                            <span className="text-sm font-medium">{service.duration} min</span>
-                          </div>
-                        )}
-                        
-                        {service?.price && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-500">Price</span>
-                            <span className="text-sm font-medium">${service.price}</span>
-                          </div>
-                        )}
-                        
-                        {service?.description && (
-                          <div className="pt-2 mt-2 border-t border-gray-200">
-                            <p className="text-sm text-gray-600">{service.description}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {isDialogOpen && (
+            <AppointmentDetailView
+              appointment={appointment}
+              onClose={handleCloseDialog}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>

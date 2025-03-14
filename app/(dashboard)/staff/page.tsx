@@ -34,11 +34,39 @@ export default function StaffPage() {
     }
   }, [user?.businessId]);
 
+  // Check if a staff member is an admin
+  const isAdminStaff = (staff: BusinessUser) => {
+    return (staff.role === 'admin' || (user && staff.id === user.id));
+  };
+
   const loadStaff = async () => {
     try {
       setIsLoading(true);
       const data = await getBusinessStaff(user?.businessId || '');
-      setStaffMembers(data);
+      
+      // Ensure the current user has admin role
+      const enhancedData = data.map(staff => {
+        // If this is the logged-in user (owner), ensure they have the admin role
+        if (user && staff.id === user.id) {
+          return {
+            ...staff,
+            role: 'admin',
+          };
+        }
+        return staff;
+      });
+      
+      // Sort to show admin first, then alphabetically by name
+      const sortedData = enhancedData.sort((a, b) => {
+        // Admin always comes first
+        if (isAdminStaff(a) && !isAdminStaff(b)) return -1;
+        if (!isAdminStaff(a) && isAdminStaff(b)) return 1;
+        
+        // Then sort alphabetically
+        return a.name.localeCompare(b.name);
+      });
+      
+      setStaffMembers(sortedData);
     } catch (error) {
       toast({
         title: 'Error',
@@ -67,6 +95,17 @@ export default function StaffPage() {
 
   const handleDeleteStaff = async (id: string) => {
     try {
+      // Safety check: don't allow deletion of admin/owner
+      const staffToDelete = staffMembers.find(staff => staff.id === id);
+      if (staffToDelete && isAdminStaff(staffToDelete)) {
+        toast({
+          title: 'Action Denied',
+          description: 'The business owner/admin cannot be deleted.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       await deleteStaff(id);
       // Refresh the staff list
       loadStaff();
@@ -89,6 +128,11 @@ export default function StaffPage() {
           email: data.email,
           serviceIds: data.serviceIds,
         };
+        
+        // Preserve admin status for the owner
+        if (isAdminStaff(currentStaff)) {
+          updateParams.role = 'admin';
+        }
         
         await updateStaff(updateParams);
       } else {

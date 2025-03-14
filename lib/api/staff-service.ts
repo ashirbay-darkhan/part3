@@ -16,8 +16,9 @@ export interface UpdateStaffParams {
   name?: string;
   email?: string;
   password?: string;
-  serviceIds?: string[]; // IDs of services this staff can provide
-  isVerified?: boolean;
+  avatar?: string;
+  serviceIds?: string[];
+  role?: 'admin' | 'staff';
 }
 
 export async function getBusinessStaff(businessId: string): Promise<BusinessUser[]> {

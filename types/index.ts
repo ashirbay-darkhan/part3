@@ -73,6 +73,7 @@ export type BusinessUser = User & {
   email: string;
   isVerified: boolean;
   serviceIds: string[]; // IDs of services this staff can provide
+  role?: 'admin' | 'staff';  // Role for the user, admin indicates owner/administrator
 };
 
 // Extend existing types with business ownership

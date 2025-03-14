@@ -100,17 +100,17 @@
       "name": "Nikita",
       "email": "nikita@gmail.com",
       "serviceIds": [
+        "o2ukp7W",
         "I3yYFSN",
-        "o2ukp7W"
+        "bc2n3dz"
       ],
       "businessId": "1741098049512",
       "businessName": "Nike",
-      "password": "password123",
       "id": "1741765967361",
       "isVerified": true
     },
     {
-      "name": "Richard",
+      "name": "Richard123",
       "email": "richard@gmail.com",
       "serviceIds": [
         "I3yYFSN",
@@ -118,9 +118,18 @@
       ],
       "businessId": "1741098049512",
       "businessName": "Nike",
-      "password": "password123",
       "id": "1741868174674",
       "isVerified": true
+    },
+    {
+      "id": "1741980658252",
+      "name": "dmitry popov",
+      "email": "dmitry.popov413@gmail.com",
+      "password": "123123",
+      "role": "admin",
+      "businessId": "1741980658252",
+      "businessName": "Pied piper",
+      "isVerified": false
     }
   ],
   "businesses": [
@@ -141,6 +150,12 @@
       "name": "Nike",
       "email": "darkhan.ashirbay01@gmail.com",
       "ownerId": "1741098049544"
+    },
+    {
+      "id": "1741980658252",
+      "name": "Pied piper",
+      "ownerId": "1741980658252",
+      "email": "dmitry.popov413@gmail.com"
     }
   ],
   "services": [
@@ -188,6 +203,15 @@
       "category": "Haircut",
       "businessId": "1741098049512",
       "id": "o2ukp7W"
+    },
+    {
+      "name": "new srvice",
+      "description": "lorem ipsim",
+      "duration": 60,
+      "price": 3000,
+      "category": "Haircut",
+      "businessId": "1741098049512",
+      "id": "bc2n3dz"
     }
   ],
   "bookingLinks": [

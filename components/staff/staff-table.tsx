@@ -11,7 +11,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar-fallback';
@@ -89,6 +89,11 @@ export function StaffTable({ staffMembers, onDelete, onEdit }: StaffTableProps) 
     return services[serviceId]?.name || 'Unknown Service';
   };
 
+  // Check if a staff member is the admin/owner
+  const isAdminStaff = (staff: BusinessUser) => {
+    return staff.role === 'admin' || (user && staff.id === user.id);
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -109,81 +114,104 @@ export function StaffTable({ staffMembers, onDelete, onEdit }: StaffTableProps) 
               </TableCell>
             </TableRow>
           ) : (
-            staffMembers.map((staff) => (
-              <TableRow key={staff.id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-3">
-                    <Avatar 
-                      src={staff.avatar} 
-                      name={staff.name} 
-                      className="w-9 h-9"
-                    />
-                    <span>{staff.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell>{staff.email}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {staff.serviceIds && staff.serviceIds.length > 0 ? (
-                      staff.serviceIds.map((serviceId) => (
-                        <Badge key={serviceId} variant="outline" className="text-xs">
-                          {getServiceName(serviceId)}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 text-xs">No services</span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={staff.isVerified ? 'default' : 'secondary'}>
-                    {staff.isVerified ? 'Verified' : 'Pending'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => onEdit(staff)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="destructive" 
-                          size="icon"
-                          onClick={() => setStaffToDelete(staff.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Staff Member</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete {staff.name}? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            disabled={isDeleting}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleDelete(staff.id);
-                            }}
-                          >
-                            {isDeleting ? 'Deleting...' : 'Delete'}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
+            staffMembers.map((staff) => {
+              const isAdmin = isAdminStaff(staff);
+              return (
+                <TableRow 
+                  key={staff.id} 
+                  className={isAdmin ? "bg-blue-50/30" : ""}
+                >
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-3">
+                      <Avatar 
+                        src={staff.avatar} 
+                        name={staff.name} 
+                        className={`w-9 h-9 ${isAdmin ? "ring-2 ring-blue-300" : ""}`}
+                      />
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span>{staff.name}</span>
+                          {isAdmin && (
+                            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 px-1.5 py-0 text-[10px] font-medium">
+                              <ShieldCheck className="w-3 h-3 mr-0.5" />
+                              Admin
+                            </Badge>
+                          )}
+                        </div>
+                        {isAdmin && (
+                          <span className="text-xs text-gray-500">Business Owner</span>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{staff.email}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {isAdmin ? (
+                        <span className="text-xs text-gray-500">Administrator access</span>
+                      ) : staff.serviceIds && staff.serviceIds.length > 0 ? (
+                        staff.serviceIds.map((serviceId) => (
+                          <Badge key={serviceId} variant="outline" className="text-xs">
+                            {getServiceName(serviceId)}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-gray-500 text-xs">No services</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={staff.isVerified ? 'default' : 'secondary'}>
+                      {staff.isVerified ? 'Verified' : 'Pending'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => onEdit(staff)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      {!isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="destructive" 
+                              size="icon"
+                              onClick={() => setStaffToDelete(staff.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Staff Member</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {staff.name}? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                disabled={isDeleting}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleDelete(staff.id);
+                                }}
+                              >
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>

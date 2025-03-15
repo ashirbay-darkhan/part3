@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
+  ImageIcon,
 } from 'lucide-react';
 import { Service } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -65,7 +66,8 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="animate-pulse">
+          <Card key={i} className="animate-pulse overflow-hidden">
+            <div className="h-48 bg-slate-200 dark:bg-slate-700 w-full"></div>
             <CardHeader className="pb-2">
               <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-2"></div>
               <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
@@ -130,6 +132,19 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedServices.map((service) => (
             <Card key={service.id} className="overflow-hidden border hover:border-primary/50 transition-colors">
+              {service.imageUrl ? (
+                <div className="w-full h-48 overflow-hidden">
+                  <img 
+                    src={service.imageUrl} 
+                    alt={service.name} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  <ImageIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+                </div>
+              )}
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-lg">{service.name}</CardTitle>

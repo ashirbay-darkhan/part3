@@ -21,6 +21,7 @@ export type Service = {
   price: number;
   description?: string;
   category?: string; // Added category field
+  imageUrl?: string; // Image URL for the service
   businessId?: string; // This field might already exist in your BusinessService type
 };
 

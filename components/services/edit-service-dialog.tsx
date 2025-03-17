@@ -26,7 +26,16 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Upload, ImageIcon } from 'lucide-react';
+import { ImageIcon, CheckCircle2 } from 'lucide-react';
+
+// Sample service images - in production, these would likely be fetched from an API
+const serviceImages = [
+  { name: 'Haircut', path: '/images/services/haircut.jpg' },
+  { name: 'Massage', path: '/images/services/massage.jpg' },
+  { name: 'Manicure', path: '/images/services/manicure.jpg' },
+  { name: 'Facial', path: '/images/services/facial.jpg' },
+  { name: 'General', path: '/images/services/general.jpg' },
+];
 
 // Define the form schema for service editing
 const serviceFormSchema = z.object({
@@ -44,7 +53,7 @@ interface EditServiceDialogProps {
   service: Service;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (updatedService: Service) => void;
 }
 
 export function EditServiceDialog({ 
@@ -56,14 +65,14 @@ export function EditServiceDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(service.imageUrl || null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const {
     register,
     handleSubmit,
-    reset,
     setValue,
     formState: { errors },
+    reset,
   } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: {
@@ -75,19 +84,13 @@ export function EditServiceDialog({
       imageUrl: service.imageUrl || '',
     },
   });
-
-  // Update form values when service changes
+  
+  // Initialize selected image
   useEffect(() => {
-    reset({
-      name: service.name,
-      description: service.description || '',
-      duration: service.duration,
-      price: service.price,
-      category: service.category,
-      imageUrl: service.imageUrl || '',
-    });
-    setImagePreview(service.imageUrl || null);
-  }, [service, reset]);
+    if (service.imageUrl) {
+      setSelectedImage(service.imageUrl);
+    }
+  }, [service.imageUrl]);
 
   // Fetch categories when dialog opens
   useEffect(() => {
@@ -106,73 +109,92 @@ export function EditServiceDialog({
       };
 
       fetchCategories();
+      
+      // Reset the form with service data when the dialog opens
+      reset({
+        name: service.name,
+        description: service.description || '',
+        duration: service.duration,
+        price: service.price,
+        category: service.category,
+        imageUrl: service.imageUrl || '',
+      });
+      
+      setSelectedImage(service.imageUrl || null);
     }
-  }, [open]);
+  }, [open, service, reset]);
 
   const onSubmit = async (data: ServiceFormValues) => {
     setIsSubmitting(true);
     
     try {
-      await updateService(service.id, {
+      console.log('[EditServiceDialog] Submitting service update for ID:', service.id);
+      console.log('[EditServiceDialog] Update data:', data);
+      
+      // Create a new service object with updated data to pass back to parent
+      const updatedServiceData = {
+        ...service, // Keep all existing data
         name: data.name,
         description: data.description,
         duration: data.duration,
         price: data.price,
         category: data.category,
         imageUrl: data.imageUrl,
-      });
+      };
       
+      // Update in API and get the updated service
+      const updatedService = await updateService(service.id, updatedServiceData);
+      
+      console.log('[EditServiceDialog] Service updated successfully:', updatedService);
       toast.success('Service updated successfully');
+      
+      // Force close the dialog
       onOpenChange(false);
       
-      // Call onSuccess after a short delay to ensure the dialog is closed
-      setTimeout(() => {
-        onSuccess();
-      }, 100);
+      // Make a deep copy of the updated service to ensure React detects the change
+      const serviceCopy = JSON.parse(JSON.stringify(updatedService)) as Service;
+      
+      // Update the UI by passing the updated service to the parent component
+      onSuccess(serviceCopy);
     } catch (error) {
-      console.error('Error updating service:', error);
+      console.error('[EditServiceDialog] Error updating service:', error);
       toast.error('Failed to update service');
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageUrl = reader.result as string;
-        setImagePreview(imageUrl);
-        setValue('imageUrl', imageUrl);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleImageSelect = (imagePath: string) => {
+    setSelectedImage(imagePath);
+    setValue('imageUrl', imagePath);
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>Edit Service</DialogTitle>
           <DialogDescription>
-            Update the details of your service.
+            Update your service details and click save when you're done.
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left column - Main details */}
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            {/* Left column - Service details */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Service Name <span className="text-red-500">*</span></Label>
+                <Label htmlFor="name">
+                  Service Name <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Men's Haircut"
                   {...register('name')}
+                  placeholder="e.g., Men's Haircut"
+                  disabled={isSubmitting}
                 />
                 {errors.name && (
-                  <p className="text-xs text-red-500">{errors.name.message}</p>
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
                 )}
               </div>
               
@@ -180,36 +202,44 @@ export function EditServiceDialog({
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your service..."
-                  className="min-h-[80px]"
                   {...register('description')}
+                  placeholder="Describe your service..."
+                  disabled={isSubmitting}
+                  className="min-h-[120px]"
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (minutes) <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="duration">
+                    Duration (minutes) <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="duration"
                     type="number"
-                    placeholder="60"
+                    min="1"
                     {...register('duration')}
+                    disabled={isSubmitting}
                   />
                   {errors.duration && (
-                    <p className="text-xs text-red-500">{errors.duration.message}</p>
+                    <p className="text-sm text-red-500">{errors.duration.message}</p>
                   )}
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price (₸) <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="price">
+                    Price (₸) <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="price"
                     type="number"
-                    placeholder="2000"
+                    min="0"
+                    step="0.01"
                     {...register('price')}
+                    disabled={isSubmitting}
                   />
                   {errors.price && (
-                    <p className="text-xs text-red-500">{errors.price.message}</p>
+                    <p className="text-sm text-red-500">{errors.price.message}</p>
                   )}
                 </div>
               </div>
@@ -236,57 +266,62 @@ export function EditServiceDialog({
               </div>
             </div>
             
-            {/* Right column - Image upload */}
+            {/* Right column - Image selection */}
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="image">Service Image</Label>
-                <div className="border-2 border-dashed rounded-lg p-4 text-center h-[250px] flex flex-col items-center justify-center">
-                  {imagePreview ? (
-                    <div className="h-full w-full relative flex flex-col items-center justify-center">
-                      <img 
-                        src={imagePreview} 
-                        alt="Service preview" 
-                        className="max-h-full max-w-full object-contain"
-                      />
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        className="mt-2"
-                        onClick={() => {
-                          setImagePreview(null);
-                          setValue('imageUrl', '');
-                        }}
+                <div className="border-2 border-dashed rounded-lg p-4 h-[300px] overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-3">
+                    {serviceImages.map((image) => (
+                      <div 
+                        key={image.path}
+                        className={`
+                          relative cursor-pointer rounded-md overflow-hidden
+                          ${selectedImage === image.path ? 'ring-2 ring-primary ring-offset-2' : 'hover:opacity-80'}
+                        `}
+                        onClick={() => handleImageSelect(image.path)}
                       >
-                        Remove Image
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full">
+                        <img 
+                          src={image.path} 
+                          alt={image.name}
+                          className="w-full h-32 object-cover"
+                          onError={(e) => {
+                            // Show a fallback if image doesn't load
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://placehold.co/400x300?text=No+Image';
+                          }}
+                        />
+                        <div className="p-2 bg-background/80 text-xs font-medium truncate">
+                          {image.name}
+                        </div>
+                        {selectedImage === image.path && (
+                          <div className="absolute top-2 right-2 bg-primary rounded-full text-white">
+                            <CheckCircle2 className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {/* No image option */}
+                    <div 
+                      className={`
+                        relative cursor-pointer rounded-md overflow-hidden flex flex-col items-center justify-center bg-muted h-32
+                        ${selectedImage === '' ? 'ring-2 ring-primary ring-offset-2' : 'hover:opacity-80'}
+                      `}
+                      onClick={() => handleImageSelect('')}
+                    >
                       <ImageIcon className="h-10 w-10 text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Drag and drop an image or click to browse
-                      </p>
-                      <Input 
-                        id="image"
-                        type="file" 
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                      />
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => document.getElementById('image')?.click()}
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Image
-                      </Button>
+                      <div className="text-xs font-medium">No Image</div>
+                      {selectedImage === '' && (
+                        <div className="absolute top-2 right-2 bg-primary rounded-full text-white">
+                          <CheckCircle2 className="h-5 w-5" />
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Recommended size: 800x600px. Max file size: 2MB.
+                  Select an image from the gallery for your service
                 </p>
               </div>
             </div>

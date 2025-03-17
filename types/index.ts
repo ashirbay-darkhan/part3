@@ -22,7 +22,7 @@ export type Service = {
   description?: string;
   category?: string; // Added category field
   imageUrl?: string; // Image URL for the service
-  businessId?: string; // This field might already exist in your BusinessService type
+  businessId: string; // Required field, ensuring it's always present and a string
 };
 
 export type AppointmentStatus = 'Pending' | 'Arrived' | 'No-Show' | 'Confirmed';

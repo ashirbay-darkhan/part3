@@ -72,11 +72,29 @@ export function BookingForm({ formId }: BookingFormProps) {
         }
         
         const data = await response.json();
-        setFormData(data);
+        
+        // Ensure all IDs are strings in the data
+        const processedData = {
+          ...data,
+          availableServices: data.availableServices.map((service: Service) => ({
+            ...service,
+            id: service.id.toString(),
+            businessId: service.businessId.toString()
+          })),
+          availableEmployees: data.availableEmployees.map((employee: User) => ({
+            ...employee,
+            id: employee.id.toString(),
+            serviceIds: Array.isArray(employee.serviceIds) 
+              ? employee.serviceIds.map((id: any) => id.toString()) 
+              : []
+          }))
+        };
+        
+        setFormData(processedData);
         
         // If link is for a specific employee, pre-select them
-        if (data.formType === 'Employee' && data.availableEmployees.length === 1) {
-          setSelectedEmployee(data.availableEmployees[0]);
+        if (processedData.formType === 'Employee' && processedData.availableEmployees.length === 1) {
+          setSelectedEmployee(processedData.availableEmployees[0]);
         }
         
         // Check URL params for pre-selection
@@ -84,12 +102,14 @@ export function BookingForm({ formId }: BookingFormProps) {
         const employeeId = searchParams.get('employee');
         
         if (serviceId) {
-          const service = data.availableServices.find(s => s.id === serviceId);
+          const serviceIdString = serviceId.toString();
+          const service = processedData.availableServices.find((s: Service) => s.id === serviceIdString);
           if (service) setSelectedService(service);
         }
         
         if (employeeId) {
-          const employee = data.availableEmployees.find(e => e.id === employeeId);
+          const employeeIdString = employeeId.toString();
+          const employee = processedData.availableEmployees.find((e: User) => e.id === employeeIdString);
           if (employee) setSelectedEmployee(employee);
         }
         
@@ -150,41 +170,48 @@ export function BookingForm({ formId }: BookingFormProps) {
     }
   };
   
-  // Обработка отправки формы
+  // Отправка формы
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!selectedService || !selectedEmployee || !selectedDate || !selectedTime) {
+      toast.error('Please fill in all booking details');
+      return;
+    }
     
     try {
       setIsLoading(true);
       
-      // Prepare data for submission
       const bookingData = {
-        serviceId: selectedService?.id,
-        employeeId: selectedEmployee?.id,
-        date: selectedDate?.toISOString().split('T')[0],
+        serviceId: selectedService.id.toString(),
+        employeeId: selectedEmployee.id.toString(),
+        date: format(selectedDate, 'yyyy-MM-dd'),
         time: selectedTime,
-        customer: customerDetails,
+        duration: selectedService.duration,
+        price: selectedService.price,
+        customer: {
+          ...customerDetails
+        },
+        businessId: selectedService.businessId.toString()
       };
       
-      // Send data to server
       const response = await fetch(`/api/booking-forms/${formId}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(bookingData),
+        body: JSON.stringify(bookingData)
       });
       
       if (!response.ok) {
         throw new Error('Failed to create booking');
       }
       
-      // Handle successful response
-      const result = await response.json();
-      toast.success('Booking confirmed!');
+      const data = await response.json();
       
-      // Go to confirmation step
-      goToNextStep();
+      // Show success toast and reset form or redirect
+      toast.success('Booking confirmed! You will receive a confirmation email shortly.');
+      setCurrentStep('confirmation');
       
     } catch (err) {
       console.error('Error creating booking:', err);
@@ -368,7 +395,7 @@ export function BookingForm({ formId }: BookingFormProps) {
                       </div>
                       <div>
                         <div className="font-medium">{employee.name}</div>
-                        <div className="text-sm text-slate-500">{employee.role}</div>
+                        <div className="text-sm text-slate-500">{(employee as any).role || 'Staff'}</div>
                       </div>
                     </div>
                   </div>

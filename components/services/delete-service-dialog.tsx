@@ -35,17 +35,17 @@ export function DeleteServiceDialog({
     setIsDeleting(true);
     
     try {
+      console.log('Deleting service:', service.id);
       await deleteService(service.id);
+      
       toast.success('Service deleted successfully');
       onOpenChange(false);
       
-      // Call onSuccess after a short delay to ensure the dialog is closed
-      setTimeout(() => {
-        onSuccess();
-      }, 100);
+      // Notify parent component about the deletion
+      onSuccess();
     } catch (error) {
-      console.error('Error deleting service:', error);
       toast.error('Failed to delete service');
+      console.error('Failed to delete service:', error);
     } finally {
       setIsDeleting(false);
     }

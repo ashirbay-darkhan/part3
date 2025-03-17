@@ -101,31 +101,54 @@ export function BusinessBookingForm({ businessId }: BusinessBookingFormProps) {
               }
             }
             
-            // If no mapping found, use default business ID
             if (!found) {
-              console.warn('No mapping found for link ID, using default business ID');
-              actualBusinessId = '1'; // Default business ID
+              console.warn('Could not find business ID for link ID:', businessId);
+              setErrorMessage('Booking link not found. Please contact the business directly.');
+              setIsLoading(false);
+              return;
             }
           }
         }
         
-        console.log(`Using business ID: ${actualBusinessId} for link ID: ${businessId}`);
+        // Ensure businessId is a string
+        actualBusinessId = actualBusinessId.toString();
         
-        // Fetch business, services, and staff data in parallel
+        // Fetch business, services and staff
         const [businessData, servicesData, staffData] = await Promise.all([
           getBusiness(actualBusinessId),
           getBusinessServices(actualBusinessId),
           getBusinessStaff(actualBusinessId)
         ]);
         
-        // Update state with fetched data
-        setBusiness(businessData);
-        setServices(servicesData);
-        setStaff(staffData);
+        // Process data to ensure ID consistency
+        const processedBusiness = {
+          ...businessData,
+          id: businessData.id.toString(),
+          ownerId: businessData.ownerId.toString()
+        };
+        
+        const processedServices = servicesData.map(service => ({
+          ...service,
+          id: service.id.toString(),
+          businessId: service.businessId.toString()
+        }));
+        
+        const processedStaff = staffData.map(staff => ({
+          ...staff,
+          id: staff.id.toString(),
+          businessId: staff.businessId.toString(),
+          serviceIds: Array.isArray(staff.serviceIds) 
+            ? staff.serviceIds.map(id => id.toString()) 
+            : []
+        }));
+        
+        setBusiness(processedBusiness);
+        setServices(processedServices);
+        setStaff(processedStaff);
         
       } catch (error) {
         console.error('Error fetching business data:', error);
-        setErrorMessage('Unable to load business data. Please try again later.');
+        setErrorMessage('Unable to load booking information. Please try again later.');
       } finally {
         setIsLoading(false);
       }
@@ -237,62 +260,64 @@ export function BusinessBookingForm({ businessId }: BusinessBookingFormProps) {
     }
   };
   
-  // Submit booking form
+  // Helper function to calculate end time based on start time and duration
+  const calculateEndTime = (startTime: string, duration: number): string => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + duration;
+    const endHours = Math.floor(totalMinutes / 60);
+    const endMinutes = totalMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+  };
+  
+  // Submit booking
   const handleSubmitBooking = async () => {
-    if (!selectedService || !selectedStaff || !selectedDate || !selectedTime || !clientName || !clientPhone) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (isSubmitting) return;
     
     try {
       setIsSubmitting(true);
       
-      // Create client first (or get existing)
+      // Validate form data
+      if (!selectedService || !selectedStaff || !selectedDate || !selectedTime ||
+          !clientName || !clientPhone) {
+        toast({
+          title: "Missing information",
+          description: "Please fill in all required fields",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Create appointment data with string IDs
+      const appointmentData = {
+        clientId: 'temp-client-id', // Will be replaced by the API
+        serviceId: selectedService.id.toString(),
+        employeeId: selectedStaff.id.toString(),
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        startTime: selectedTime,
+        endTime: calculateEndTime(selectedTime, selectedService.duration),
+        duration: selectedService.duration,
+        status: 'Pending' as const,
+        price: selectedService.price,
+        businessId: selectedService.businessId.toString(),
+        comment: clientNotes || undefined
+      };
+      
+      // Create client data with string businessId
       const clientData = {
         name: clientName,
         phone: clientPhone,
-        email: clientEmail || '', // Optional
-        totalVisits: 0,
-        notes: clientNotes,
-        businessId: businessId
+        email: clientEmail || '',
+        notes: clientNotes || '',
+        businessId: selectedService.businessId.toString()
       };
       
-      // Calculate appointment time details
-      const [hours, minutes] = selectedTime.split(':').map(Number);
-      const startTime = selectedTime;
+      // Create appointment with client
+      await createAppointmentWithClient(appointmentData, clientData);
       
-      // Calculate end time based on service duration
-      const endHours = Math.floor((hours * 60 + minutes + selectedService.duration) / 60);
-      const endMinutes = (hours * 60 + minutes + selectedService.duration) % 60;
-      const endTime = `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
-      
-      // Format the date as ISO string (YYYY-MM-DD)
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-      
-      // Create appointment
-      const appointmentData: Omit<Appointment, 'id'> = {
-        clientId: 'temp-client-id', // Will be replaced by API
-        employeeId: selectedStaff.id,
-        serviceId: selectedService.id,
-        date: formattedDate,
-        startTime,
-        endTime,
-        duration: selectedService.duration,
-        status: 'Pending',
-        comment: clientNotes,
-        price: selectedService.price
-      };
-      
-      const result = await createAppointmentWithClient(appointmentData, clientData);
-      
-      // Success - show confirmation and reset form
+      // Show success message
       toast({
         title: "Booking confirmed!",
-        description: "Your appointment has been scheduled successfully.",
+        description: "Your appointment has been scheduled. You will receive a confirmation shortly.",
         variant: "default"
       });
       
@@ -300,10 +325,10 @@ export function BusinessBookingForm({ businessId }: BusinessBookingFormProps) {
       setCurrentStep('confirmation');
       
     } catch (error) {
-      console.error('Error creating appointment:', error);
+      console.error('Error creating booking:', error);
       toast({
         title: "Booking failed",
-        description: "There was an error creating your appointment. Please try again.",
+        description: (error as Error).message || "There was a problem creating your booking. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -509,10 +534,10 @@ export function BusinessBookingForm({ businessId }: BusinessBookingFormProps) {
                 
                 {/* Direct calendar without popover */}
                 <div className="border rounded-md p-2 shadow-sm bg-card">
+                  {/* @ts-ignore - The type definitions for the calendar are inconsistent */}
                   <CalendarComponent
                     mode="single" 
                     selected={selectedDate}
-                    // @ts-ignore - The type definitions are inconsistent
                     onSelect={setSelectedDate}
                     disabled={(date) => {
                       const today = new Date();

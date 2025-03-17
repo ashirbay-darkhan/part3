@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PlusCircle, Tag, Menu } from 'lucide-react';
+import { PlusCircle, Tag, Menu, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ServicesList } from '@/components/services/services-list';
@@ -15,6 +15,7 @@ import { DeleteCategoryDialog } from '@/components/services/delete-category-dial
 import { getBusinessServices, getBusinessServiceCategories } from '@/lib/api';
 import { Service, ServiceCategory } from '@/types';
 import { toast } from 'sonner';
+import { DebugPanel } from '@/components/debug-panel';
 
 export default function ServicesPage() {
   // Main tabs for switching between services and categories
@@ -46,7 +47,9 @@ export default function ServicesPage() {
     const fetchServices = async () => {
       setIsServicesLoading(true);
       try {
+        console.log('[ServicesPage] Fetching services, refreshKey:', refreshKey);
         const data = await getBusinessServices();
+        console.log('[ServicesPage] Fetched services:', data);
         setServices(data);
       } catch (error) {
         console.error('Failed to fetch services:', error);
@@ -55,6 +58,16 @@ export default function ServicesPage() {
         setIsServicesLoading(false);
       }
     };
+
+    // Get URL query parameters to detect if page was loaded with a timestamp
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const hasTimestamp = urlParams?.has('t');
+    
+    // If there's a timestamp in the URL, clean it up by removing query params
+    if (hasTimestamp && typeof window !== 'undefined') {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
 
     fetchServices();
   }, [refreshKey]); // Refetch when refreshKey changes
@@ -77,9 +90,40 @@ export default function ServicesPage() {
     fetchCategories();
   }, [refreshKey]); // Refetch when refreshKey changes
 
+  // Refresh data helper function that can be called from anywhere
+  const refreshData = () => {
+    console.log('[ServicesPage] Refreshing data');
+    
+    // Show loading state
+    setIsServicesLoading(true);
+    
+    // Clear existing data first to avoid stale UI
+    setServices([]);
+    
+    // Force re-fetch by updating the refresh key
+    setRefreshKey(prevKey => prevKey + 1);
+    
+    // Show refresh toast
+    toast.success('Refreshing data...', {
+      duration: 1000,
+      position: 'bottom-right'
+    });
+  };
+
+  // Add a manual refresh button to the page header
+  const handleManualRefresh = () => {
+    console.log('[ServicesPage] Manual refresh triggered');
+    refreshData();
+  };
+
   // Dialog handlers for services
   const handleCreateService = () => {
     setIsCreateServiceOpen(true);
+  };
+
+  const handleServiceCreated = () => {
+    console.log('[ServicesPage] Service created, refreshing');
+    refreshData();
   };
 
   const handleEditService = (service: Service) => {
@@ -87,9 +131,41 @@ export default function ServicesPage() {
     setIsEditServiceOpen(true);
   };
 
+  const handleServiceUpdated = (updatedService: Service) => {
+    console.log('[ServicesPage] Service updated with data:', updatedService);
+    
+    if (updatedService && updatedService.id) {
+      // Create a new services array with the updated service
+      const updatedServices = services.map(service => 
+        service.id === updatedService.id ? {...updatedService} : service
+      );
+      
+      // Update services state with the new array
+      setServices(updatedServices);
+      
+      // Clear the selected service
+      setSelectedService(null);
+      
+      // Show success toast
+      toast.success('Service updated successfully', {
+        id: 'service-update-success',
+        duration: 2000
+      });
+    } else {
+      console.warn('[ServicesPage] Received invalid updated service:', updatedService);
+      // Fallback to full refresh if we don't have a valid updated service
+      refreshData();
+    }
+  };
+
   const handleDeleteService = (service: Service) => {
     setSelectedService(service);
     setIsDeleteServiceOpen(true);
+  };
+
+  const handleServiceDeleted = () => {
+    console.log('[ServicesPage] Service deleted, refreshing');
+    refreshData();
   };
 
   // Dialog handlers for categories
@@ -97,9 +173,19 @@ export default function ServicesPage() {
     setIsCreateCategoryOpen(true);
   };
 
+  const handleCategoryCreated = () => {
+    console.log('[ServicesPage] Category created, refreshing');
+    refreshData();
+  };
+
   const handleEditCategory = (category: ServiceCategory) => {
     setSelectedCategory(category);
     setIsEditCategoryOpen(true);
+  };
+
+  const handleCategoryUpdated = () => {
+    console.log('[ServicesPage] Category updated, refreshing');
+    refreshData();
   };
 
   const handleDeleteCategory = (category: ServiceCategory) => {
@@ -107,9 +193,9 @@ export default function ServicesPage() {
     setIsDeleteCategoryOpen(true);
   };
 
-  const handleSuccess = () => {
-    // Increment refreshKey to trigger data refetch
-    setRefreshKey(prev => prev + 1);
+  const handleCategoryDeleted = () => {
+    console.log('[ServicesPage] Category deleted, refreshing');
+    refreshData();
   };
 
   // Calculate service categories for tabs
@@ -140,6 +226,16 @@ export default function ServicesPage() {
               </div>
             </div>
           <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={refreshData}
+              title="Refresh data"
+              className="mr-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            
             <Tabs value={mainTab} onValueChange={setMainTab} className="hidden sm:flex">
               <TabsList>
                 <TabsTrigger value="services" className="flex gap-1.5">
@@ -227,7 +323,7 @@ export default function ServicesPage() {
       <CreateServiceDialog 
         open={isCreateServiceOpen} 
         onOpenChange={setIsCreateServiceOpen}
-        onSuccess={handleSuccess}
+        onSuccess={handleServiceCreated}
       />
 
       {selectedService && (
@@ -236,42 +332,43 @@ export default function ServicesPage() {
             service={selectedService}
             open={isEditServiceOpen}
             onOpenChange={setIsEditServiceOpen}
-            onSuccess={handleSuccess}
+            onSuccess={handleServiceUpdated}
           />
 
           <DeleteServiceDialog 
             service={selectedService}
             open={isDeleteServiceOpen}
             onOpenChange={setIsDeleteServiceOpen}
-            onSuccess={handleSuccess}
+            onSuccess={handleServiceDeleted}
           />
         </>
       )}
 
       {/* Categories Dialogs */}
-      <CreateCategoryDialog 
+      <CreateCategoryDialog
         open={isCreateCategoryOpen}
         onOpenChange={setIsCreateCategoryOpen}
-        onSuccess={handleSuccess}
+        onSuccess={handleCategoryCreated}
       />
-
       {selectedCategory && (
         <>
-          <EditCategoryDialog 
-            category={selectedCategory}
+          <EditCategoryDialog
             open={isEditCategoryOpen}
             onOpenChange={setIsEditCategoryOpen}
-            onSuccess={handleSuccess}
-          />
-
-          <DeleteCategoryDialog 
             category={selectedCategory}
+            onSuccess={handleCategoryUpdated}
+          />
+          <DeleteCategoryDialog
             open={isDeleteCategoryOpen}
             onOpenChange={setIsDeleteCategoryOpen}
-            onSuccess={handleSuccess}
+            category={selectedCategory}
+            onSuccess={handleCategoryDeleted}
           />
         </>
       )}
+
+      {/* Debug Panel */}
+      <DebugPanel />
     </div>
   );
 }

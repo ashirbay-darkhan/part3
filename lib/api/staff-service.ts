@@ -73,13 +73,16 @@ export async function getStaffById(id: string): Promise<BusinessUser> {
 
 export async function createStaff(staffData: CreateStaffParams): Promise<BusinessUser> {
   try {
+    // Ensure serviceIds are strings
+    const serviceIds = (staffData.serviceIds || []).map(id => id.toString());
+    
     // For a new staff member, generate a default password if not provided
     const dataToSend = {
       ...staffData,
       password: staffData.password || 'password123', // Default password if none provided
       id: Date.now().toString(), // Generate a unique ID
       isVerified: true, // Set initially verified
-      serviceIds: staffData.serviceIds || []
+      serviceIds: serviceIds
     };
 
     const response = await fetch(`${API_URL}/users`, {

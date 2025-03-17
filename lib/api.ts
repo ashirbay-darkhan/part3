@@ -401,9 +401,25 @@ const getBusinessId = () => {
     // Check if we're in a browser environment before accessing localStorage
     if (typeof window === 'undefined') return null;
     
+    // First try to get directly from business_id localStorage item
+    const directBusinessId = localStorage.getItem('business_id');
+    if (directBusinessId) {
+      return directBusinessId;
+    }
+    
+    // If not found, try to extract from the user object
     const user = localStorage.getItem('currentUser');
     if (!user) return null;
-    return JSON.parse(user).businessId;
+    
+    const userData = JSON.parse(user);
+    const businessId = userData.businessId;
+    
+    // If found in user object, store it directly for future use
+    if (businessId) {
+      localStorage.setItem('business_id', businessId.toString());
+    }
+    
+    return businessId;
   } catch (error) {
     console.error('Error getting business ID:', error);
     return null;
@@ -510,12 +526,26 @@ export const createService = (service: Omit<Service, 'id'>) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(service)
   });
-export const updateService = (id: string, service: Partial<Service>) => 
-  fetchAPI<Service>(`services/${id}`, {
+export const updateService = (id: string, service: Partial<Service>) => {
+  console.log('[updateService] Updating service with ID:', id, 'Data:', service);
+  
+  // Add timestamp to body to make each update unique
+  const timestamp = Date.now();
+  
+  return fetchAPI<Service>(`services/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(service)
+    headers: { 
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    },
+    body: JSON.stringify({
+      ...service,
+      _timestamp: timestamp // Add timestamp to bust any caching
+    })
   });
+};
 export const deleteService = (id: string) => 
   fetchAPI(`services/${id}`, { method: 'DELETE' });
 
@@ -554,18 +584,19 @@ export const deleteAppointment = (id: string) =>
 // Clients
 export const getClients = () => fetchAPI<Client[]>('clients');
 export const getClient = (id: string) => fetchAPI<Client>(`clients/${id}`);
-export const createClient = (client: Omit<Client, 'id'>) => {
-  // Ensure businessId is set
-  const businessId = client.businessId || getBusinessId();
-  if (!businessId) throw new Error('No business ID found');
+export const createClient = async (client: Omit<Client, 'id' | 'totalVisits' | 'lastVisit'>) => {
+  const clientToCreate = {
+    ...client,
+    id: Math.random().toString(36).substring(2, 9), // Generate a string ID
+    totalVisits: 0,
+    lastVisit: new Date().toISOString(),
+    businessId: client.businessId.toString() // Ensure businessId is a string
+  };
   
   return fetchAPI<Client>('clients', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...client,
-      businessId
-    })
+    body: JSON.stringify(clientToCreate)
   });
 };
 export const updateClient = (id: string, client: Partial<Client>) => 
@@ -578,28 +609,168 @@ export const deleteClient = (id: string) =>
   fetchAPI(`clients/${id}`, { method: 'DELETE' });
 
 // Business-specific API functions
-export const getBusinessServices = async (businessId?: string) => {
+export const getBusinessServices = async (businessId?: string): Promise<Service[]> => {
+  // Get the business ID
   const bId = businessId || getBusinessId();
-  if (!bId) throw new Error('No business ID found');
+  
+  console.log('[getBusinessServices] Starting getBusinessServices with businessId:', bId);
+  
+  if (!bId) {
+    console.error('[getBusinessServices] No business ID found');
+    
+    // Try to get the ID directly from localStorage and user data as fallback
+    if (typeof window !== 'undefined') {
+      const directId = localStorage.getItem('business_id');
+      const userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
+      console.log('[getBusinessServices] Debug - directId:', directId);
+      console.log('[getBusinessServices] Debug - userData:', userData);
+      
+      if (userData.businessId) {
+        // Force refresh the business ID in localStorage
+        localStorage.setItem('business_id', userData.businessId.toString());
+        console.log('[getBusinessServices] Updated business_id in localStorage to:', userData.businessId);
+        return getBusinessServices(userData.businessId); // Retry with the correct ID
+      }
+    }
+    
+    throw new Error('No business ID found');
+  }
+  
+  console.log(`[getBusinessServices] Fetching services for business ID: ${bId}`);
   
   try {
-    return await fetchAPI<Service[]>(`services?businessId=${bId}`);
+    // Add cache-busting timestamp to completely bypass browser cache
+    const timestamp = Date.now();
+    
+    // Try first with the query parameter approach
+    const response = await fetch(`${API_URL}/services?businessId=${bId}&_=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch services: ${response.statusText}`);
+    }
+    
+    const services = await response.json();
+    
+    // Check if we got filtered results - if not, we'll do manual filtering
+    if (Array.isArray(services) && services.length > 0) {
+      console.log(`[getBusinessServices] Found ${services.length} services from query param filter`);
+      
+      // Double-check businessId just to be sure
+      const filteredServices = services.filter(service => 
+        service.businessId && service.businessId.toString() === bId.toString()
+      );
+      
+      if (filteredServices.length !== services.length) {
+        console.warn(`[getBusinessServices] Query filtering returned inconsistent results, using manual filter instead`);
+        return await getBusinessServicesManual(bId);
+      }
+      
+      console.log(`[getBusinessServices] Returning ${filteredServices.length} services:`, filteredServices);
+      return filteredServices;
+    } else {
+      console.log(`[getBusinessServices] No services found with query param, trying manual filtering`);
+      return await getBusinessServicesManual(bId);
+    }
   } catch (error) {
-    console.error('Error fetching services:', error);
+    console.error('[getBusinessServices] Error with query param approach:', error);
+    return await getBusinessServicesManual(bId);
+  }
+};
+
+// Helper function to manually fetch and filter services
+const getBusinessServicesManual = async (businessId: string): Promise<Service[]> => {
+  console.log(`[getBusinessServicesManual] Manually fetching all services for businessId: ${businessId}`);
+  
+  try {
+    // Add cache-busting timestamp
+    const timestamp = Date.now();
+    
+    // Fetch all services with cache busting
+    const response = await fetch(`${API_URL}/services?_=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch services: ${response.statusText}`);
+    }
+    
+    const allServices = await response.json();
+    console.log('[getBusinessServicesManual] All services:', allServices);
+    
+    if (!Array.isArray(allServices)) {
+      console.error('[getBusinessServicesManual] Invalid response format, expected array');
+      return [];
+    }
+    
+    // Manually filter services to match the business ID
+    const filteredServices = allServices.filter(service => 
+      service.businessId && service.businessId.toString() === businessId.toString()
+    );
+    
+    console.log(`[getBusinessServicesManual] Found ${filteredServices.length} services for business ID ${businessId}:`, filteredServices);
+    
+    return filteredServices;
+  } catch (error) {
+    console.error('[getBusinessServicesManual] Error fetching services:', error);
     // Return empty array instead of throwing to prevent app crashes
     return [];
   }
 };
 
 export const createBusinessService = async (service: Omit<Service, 'id' | 'businessId'>) => {
+  // Get the business ID using the existing helper function
   const businessId = getBusinessId();
-  if (!businessId) throw new Error('No business ID found');
   
-  return fetchAPI<Service>('services', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...service, businessId })
-  });
+  if (!businessId) {
+    console.error('No business ID found');
+    throw new Error('Business ID not found');
+  }
+  
+  // Ensure we're passing a string business ID
+  const newService = {
+    ...service,
+    businessId: businessId.toString()
+  };
+  
+  try {
+    // Use our custom services endpoint that ensures string IDs
+    const response = await fetch(`${API_URL}/services`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAuthToken()}`
+      },
+      body: JSON.stringify(newService)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to create service: ${response.statusText}`);
+    }
+    
+    // Parse the response
+    const data = await response.json();
+    
+    // Ensure the returned ID is a string
+    if (data.id && typeof data.id !== 'string') {
+      data.id = data.id.toString();
+    }
+    
+    // Return the created service
+    return data;
+  } catch (error) {
+    console.error('Error creating service:', error);
+    throw error;
+  }
 };
 
 export const getBusinessBookingLinks = async (businessId?: string) => {
@@ -803,72 +974,145 @@ export const createAppointmentWithClient = async (
 // Service Categories API functions
 
 export const getBusinessServiceCategories = async () => {
-  // Mock implementation - replace with actual API call in production
-  return new Promise<ServiceCategory[]>(resolve => {
-    setTimeout(() => {
-      resolve([
-        {
-          id: '1',
-          name: 'Haircut',
-          description: 'Hair cutting services',
-          color: '#4f46e5',
-        },
-        {
-          id: '2',
-          name: 'Styling',
-          description: 'Hair styling services',
-          color: '#8b5cf6',
-        },
-        {
-          id: '3',
-          name: 'Color',
-          description: 'Hair coloring services',
-          color: '#ec4899',
-        },
-        {
-          id: '4',
-          name: 'Treatment',
-          description: 'Hair treatment services',
-          color: '#f59e0b',
-        }
-      ]);
-    }, 500);
-  });
+  try {
+    const businessId = getBusinessId();
+    
+    // If no business ID is available, return the hardcoded categories as fallback
+    if (!businessId) {
+      console.warn('No business ID found for fetching categories, using hardcoded data');
+      return defaultCategories();
+    }
+    
+    // Get categories from API
+    const response = await fetch(`${API_URL}/serviceCategories?businessId=${businessId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch categories: ${response.statusText}`);
+    }
+    
+    const categories = await response.json();
+    
+    // If no categories found, return default ones
+    if (!categories || categories.length === 0) {
+      return defaultCategories();
+    }
+    
+    return categories;
+  } catch (error) {
+    console.error('Error fetching service categories:', error);
+    return defaultCategories();
+  }
+};
+
+// Default categories as fallback
+const defaultCategories = () => {
+  return [
+    {
+      id: '1',
+      name: 'Haircut',
+      description: 'Hair cutting services',
+      color: '#4f46e5',
+    },
+    {
+      id: '2',
+      name: 'Styling',
+      description: 'Hair styling services',
+      color: '#8b5cf6',
+    },
+    {
+      id: '3',
+      name: 'Color',
+      description: 'Hair coloring services',
+      color: '#ec4899',
+    },
+    {
+      id: '4',
+      name: 'Treatment',
+      description: 'Hair treatment services',
+      color: '#f59e0b',
+    }
+  ];
 };
 
 export const createServiceCategory = async (category: Omit<ServiceCategory, 'id' | 'businessId'>) => {
-  // Mock implementation - replace with actual API call in production
-  return new Promise<ServiceCategory>(resolve => {
-    setTimeout(() => {
-      // Generate a fake response with a random ID
-      resolve({
-        ...category,
-        id: Math.random().toString(36).substring(2, 9),
-      });
-    }, 500);
-  });
+  try {
+    // Get the business ID using the existing helper function
+    const businessId = getBusinessId();
+    
+    if (!businessId) {
+      console.error('No business ID found');
+      throw new Error('Business ID not found');
+    }
+    
+    // Add businessId to the category data
+    const categoryData = {
+      ...category,
+      businessId: businessId.toString()
+    };
+    
+    // Call the API to create the category
+    const response = await fetch(`${API_URL}/serviceCategories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAuthToken()}`
+      },
+      body: JSON.stringify(categoryData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to create category: ${response.statusText}`);
+    }
+    
+    // Parse and return the created category
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating service category:', error);
+    throw error;
+  }
 };
 
 export const updateServiceCategory = async (id: string, category: Partial<Omit<ServiceCategory, 'id' | 'businessId'>>) => {
-  // Mock implementation - replace with actual API call in production
-  return new Promise<ServiceCategory>(resolve => {
-    setTimeout(() => {
-      resolve({
-        id,
-        ...category,
-        name: category.name || 'Updated Category',
-      } as ServiceCategory);
-    }, 500);
-  });
+  try {
+    // Call the API to update the category
+    const response = await fetch(`${API_URL}/serviceCategories/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAuthToken()}`
+      },
+      body: JSON.stringify(category)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to update category: ${response.statusText}`);
+    }
+    
+    // Parse and return the updated category
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating service category:', error);
+    throw error;
+  }
 };
 
 export const deleteServiceCategory = async (id: string) => {
-  // Mock implementation - replace with actual API call in production
-  return new Promise<void>(resolve => {
-    setTimeout(() => {
-      resolve();
-    }, 500);
-  });
+  try {
+    // Call the API to delete the category
+    const response = await fetch(`${API_URL}/serviceCategories/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to delete category: ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('Error deleting service category:', error);
+    throw error;
+  }
 };
 
 // Initialize server availability check

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Clock,
   DollarSign,
@@ -8,6 +8,7 @@ import {
   Pencil,
   Trash2,
   ImageIcon,
+  RefreshCw,
 } from 'lucide-react';
 import { Service } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,15 @@ interface ServicesListProps {
 export function ServicesList({ services, isLoading, onEdit, onDelete }: ServicesListProps) {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('name');
+  
+  // Add force refreshing mechanism
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Force re-render when services change
+  useEffect(() => {
+    console.log('[ServicesList] Services changed, forcing refresh');
+    setRefreshKey(prev => prev + 1);
+  }, [services]);
 
   // Filter services by search term
   const filteredServices = services.filter(service => 
@@ -90,7 +100,7 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 mb-6 justify-between">
         <div className="relative w-full sm:w-64">
           <Input
@@ -100,17 +110,28 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
             className="pl-3"
           />
         </div>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name">Name (A-Z)</SelectItem>
-            <SelectItem value="price-asc">Price (Low to High)</SelectItem>
-            <SelectItem value="price-desc">Price (High to Low)</SelectItem>
-            <SelectItem value="duration">Duration</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name">Name (A-Z)</SelectItem>
+              <SelectItem value="price-asc">Price (Low to High)</SelectItem>
+              <SelectItem value="price-desc">Price (High to Low)</SelectItem>
+              <SelectItem value="duration">Duration</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setRefreshKey(prev => prev + 1)}
+            title="Force refresh display"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {sortedServices.length === 0 ? (
@@ -131,11 +152,11 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedServices.map((service) => (
-            <Card key={service.id} className="overflow-hidden border hover:border-primary/50 transition-colors">
+            <Card key={`${service.id}-${refreshKey}`} className="overflow-hidden">
               {service.imageUrl ? (
                 <div className="w-full h-48 overflow-hidden">
                   <img 
-                    src={service.imageUrl} 
+                    src={`${service.imageUrl}?${refreshKey}`} 
                     alt={service.name} 
                     className="w-full h-full object-cover"
                   />

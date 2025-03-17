@@ -26,7 +26,16 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Upload, ImageIcon } from 'lucide-react';
+import { ImageIcon, CheckCircle2 } from 'lucide-react';
+
+// Sample service images - in production, these would likely be fetched from an API
+const serviceImages = [
+  { name: 'Haircut', path: '/images/services/haircut.jpg' },
+  { name: 'Massage', path: '/images/services/massage.jpg' },
+  { name: 'Manicure', path: '/images/services/manicure.jpg' },
+  { name: 'Facial', path: '/images/services/facial.jpg' },
+  { name: 'General', path: '/images/services/general.jpg' },
+];
 
 // Define the form schema for service creation
 const serviceFormSchema = z.object({
@@ -54,7 +63,7 @@ export function CreateServiceDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const {
     register,
@@ -70,6 +79,7 @@ export function CreateServiceDialog({
       duration: 60,
       price: 0,
       category: undefined,
+      imageUrl: '',
     },
   });
 
@@ -90,13 +100,33 @@ export function CreateServiceDialog({
       };
 
       fetchCategories();
+      // Reset the selected image when the dialog opens
+      setSelectedImage(null);
+      setValue('imageUrl', '');
     }
-  }, [open]);
+  }, [open, setValue]);
 
   const onSubmit = async (data: ServiceFormValues) => {
     setIsSubmitting(true);
     
+    // Add debug to check business ID
+    const businessId = localStorage.getItem('business_id');
+    const userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    console.log('Debug - business ID from localStorage:', businessId);
+    console.log('Debug - business ID from user data:', userData.businessId);
+    
+    // Force refresh the business ID in localStorage
+    if (userData.businessId) {
+      localStorage.setItem('business_id', userData.businessId.toString());
+      console.log('Debug - Updated business_id in localStorage to:', userData.businessId);
+    }
+    
     try {
+      console.log('Creating service with data:', {
+        ...data,
+        businessId: localStorage.getItem('business_id')
+      });
+      
       await createBusinessService({
         name: data.name,
         description: data.description,
@@ -122,28 +152,20 @@ export function CreateServiceDialog({
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageUrl = reader.result as string;
-        setImagePreview(imageUrl);
-        setValue('imageUrl', imageUrl);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleImageSelect = (imagePath: string) => {
+    setSelectedImage(imagePath);
+    setValue('imageUrl', imagePath);
   };
 
   const handleClose = () => {
     reset();
-    setImagePreview(null);
+    setSelectedImage(null);
     onOpenChange(false);
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>Create New Service</DialogTitle>
           <DialogDescription>
@@ -151,19 +173,23 @@ export function CreateServiceDialog({
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left column - Main details */}
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+            {/* Left column - Service details */}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Service Name <span className="text-red-500">*</span></Label>
+                <Label htmlFor="name">
+                  Service Name <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Men's Haircut"
                   {...register('name')}
+                  placeholder="e.g., Men's Haircut"
+                  aria-invalid={errors.name ? "true" : "false"}
+                  disabled={isSubmitting}
                 />
                 {errors.name && (
-                  <p className="text-xs text-red-500">{errors.name.message}</p>
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
                 )}
               </div>
               
@@ -171,36 +197,46 @@ export function CreateServiceDialog({
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe your service..."
-                  className="min-h-[80px]"
                   {...register('description')}
+                  placeholder="Describe your service..."
+                  disabled={isSubmitting}
+                  className="min-h-[120px]"
                 />
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (minutes) <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="duration">
+                    Duration (minutes) <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="duration"
                     type="number"
-                    placeholder="60"
+                    min="1"
                     {...register('duration')}
+                    aria-invalid={errors.duration ? "true" : "false"}
+                    disabled={isSubmitting}
                   />
                   {errors.duration && (
-                    <p className="text-xs text-red-500">{errors.duration.message}</p>
+                    <p className="text-sm text-red-500">{errors.duration.message}</p>
                   )}
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="price">Price (₸) <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="price">
+                    Price (₸) <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="price"
                     type="number"
-                    placeholder="2000"
+                    min="0"
+                    step="0.01"
                     {...register('price')}
+                    aria-invalid={errors.price ? "true" : "false"}
+                    disabled={isSubmitting}
                   />
                   {errors.price && (
-                    <p className="text-xs text-red-500">{errors.price.message}</p>
+                    <p className="text-sm text-red-500">{errors.price.message}</p>
                   )}
                 </div>
               </div>
@@ -226,57 +262,62 @@ export function CreateServiceDialog({
               </div>
             </div>
             
-            {/* Right column - Image upload */}
+            {/* Right column - Image selection */}
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="image">Service Image</Label>
-                <div className="border-2 border-dashed rounded-lg p-4 text-center h-[250px] flex flex-col items-center justify-center">
-                  {imagePreview ? (
-                    <div className="h-full w-full relative flex flex-col items-center justify-center">
-                      <img 
-                        src={imagePreview} 
-                        alt="Service preview" 
-                        className="max-h-full max-w-full object-contain"
-                      />
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        className="mt-2"
-                        onClick={() => {
-                          setImagePreview(null);
-                          setValue('imageUrl', '');
-                        }}
+                <div className="border-2 border-dashed rounded-lg p-4 h-[300px] overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-3">
+                    {serviceImages.map((image) => (
+                      <div 
+                        key={image.path}
+                        className={`
+                          relative cursor-pointer rounded-md overflow-hidden
+                          ${selectedImage === image.path ? 'ring-2 ring-primary ring-offset-2' : 'hover:opacity-80'}
+                        `}
+                        onClick={() => handleImageSelect(image.path)}
                       >
-                        Remove Image
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full">
+                        <img 
+                          src={image.path} 
+                          alt={image.name}
+                          className="w-full h-32 object-cover"
+                          onError={(e) => {
+                            // Show a fallback if image doesn't load
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://placehold.co/400x300?text=No+Image';
+                          }}
+                        />
+                        <div className="p-2 bg-background/80 text-xs font-medium truncate">
+                          {image.name}
+                        </div>
+                        {selectedImage === image.path && (
+                          <div className="absolute top-2 right-2 bg-primary rounded-full text-white">
+                            <CheckCircle2 className="h-5 w-5" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {/* No image option */}
+                    <div 
+                      className={`
+                        relative cursor-pointer rounded-md overflow-hidden flex flex-col items-center justify-center bg-muted h-32
+                        ${selectedImage === '' ? 'ring-2 ring-primary ring-offset-2' : 'hover:opacity-80'}
+                      `}
+                      onClick={() => handleImageSelect('')}
+                    >
                       <ImageIcon className="h-10 w-10 text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Drag and drop an image or click to browse
-                      </p>
-                      <Input 
-                        id="image"
-                        type="file" 
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                      />
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => document.getElementById('image')?.click()}
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Image
-                      </Button>
+                      <div className="text-xs font-medium">No Image</div>
+                      {selectedImage === '' && (
+                        <div className="absolute top-2 right-2 bg-primary rounded-full text-white">
+                          <CheckCircle2 className="h-5 w-5" />
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Recommended size: 800x600px. Max file size: 2MB.
+                  Select an image from the gallery for your service
                 </p>
               </div>
             </div>

@@ -109,43 +109,29 @@ export function CreateServiceDialog({
   const onSubmit = async (data: ServiceFormValues) => {
     setIsSubmitting(true);
     
-    // Add debug to check business ID
-    const businessId = localStorage.getItem('business_id');
-    const userData = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    console.log('Debug - business ID from localStorage:', businessId);
-    console.log('Debug - business ID from user data:', userData.businessId);
-    
-    // Force refresh the business ID in localStorage
-    if (userData.businessId) {
-      localStorage.setItem('business_id', userData.businessId.toString());
-      console.log('Debug - Updated business_id in localStorage to:', userData.businessId);
-    }
-    
     try {
-      console.log('Creating service with data:', {
-        ...data,
-        businessId: localStorage.getItem('business_id')
-      });
-      
-      await createBusinessService({
+      // Create the service with the form data
+      const newService = await createBusinessService({
         name: data.name,
-        description: data.description,
+        description: data.description || '',
         duration: data.duration,
         price: data.price,
         category: data.category,
-        imageUrl: data.imageUrl,
+        imageUrl: data.imageUrl || ''
       });
       
       toast.success('Service created successfully');
-      reset(); // Reset form
-      onOpenChange(false); // Close dialog
       
-      // Call onSuccess after a short delay to ensure the dialog is closed
-      setTimeout(() => {
-        onSuccess();
-      }, 100);
+      // Reset the form
+      reset();
+      
+      // Close the dialog
+      onOpenChange(false);
+      
+      // Notify parent component about the new service
+      onSuccess();
     } catch (error) {
-      console.error('Error creating service:', error);
+      console.error('Failed to create service:', error);
       toast.error('Failed to create service');
     } finally {
       setIsSubmitting(false);

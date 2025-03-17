@@ -526,13 +526,14 @@ export const createService = (service: Omit<Service, 'id'>) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(service)
   });
-export const updateService = (id: string, service: Partial<Service>) => {
+export const updateService = async (id: string, service: Partial<Service>): Promise<Service> => {
   console.log('[updateService] Updating service with ID:', id, 'Data:', service);
   
   // Add timestamp to body to make each update unique
   const timestamp = Date.now();
   
-  return fetchAPI<Service>(`services/${id}`, {
+  // Update the service
+  const updatedService = await fetchAPI<Service>(`services/${id}`, {
     method: 'PATCH',
     headers: { 
       'Content-Type': 'application/json',
@@ -545,6 +546,22 @@ export const updateService = (id: string, service: Partial<Service>) => {
       _timestamp: timestamp // Add timestamp to bust any caching
     })
   });
+  
+  // Fetch the service again to ensure we have the latest data
+  try {
+    const refreshedService = await fetchAPI<Service>(`services/${id}?_=${Date.now()}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache', 
+        'Expires': '0'
+      }
+    });
+    console.log('[updateService] Re-fetched service after update:', refreshedService);
+    return refreshedService;
+  } catch (error) {
+    console.warn('[updateService] Failed to re-fetch service, returning original response:', error);
+    return updatedService;
+  }
 };
 export const deleteService = (id: string) => 
   fetchAPI(`services/${id}`, { method: 'DELETE' });
@@ -727,50 +744,35 @@ const getBusinessServicesManual = async (businessId: string): Promise<Service[]>
   }
 };
 
-export const createBusinessService = async (service: Omit<Service, 'id' | 'businessId'>) => {
-  // Get the business ID using the existing helper function
+export const createBusinessService = async (serviceData: Partial<Service>): Promise<Service> => {
+  console.log('[createBusinessService] Creating service with data:', serviceData);
+  
+  // Create a timestamp for cache busting
+  const timestamp = Date.now();
+  
+  // Ensure we have a business ID
   const businessId = getBusinessId();
   
-  if (!businessId) {
-    console.error('No business ID found');
-    throw new Error('Business ID not found');
-  }
-  
-  // Ensure we're passing a string business ID
+  // Create the complete service object
   const newService = {
-    ...service,
-    businessId: businessId.toString()
+    ...serviceData,
+    businessId,
+    _timestamp: timestamp
   };
   
-  try {
-    // Use our custom services endpoint that ensures string IDs
-    const response = await fetch(`${API_URL}/services`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`
-      },
-      body: JSON.stringify(newService)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to create service: ${response.statusText}`);
-    }
-    
-    // Parse the response
-    const data = await response.json();
-    
-    // Ensure the returned ID is a string
-    if (data.id && typeof data.id !== 'string') {
-      data.id = data.id.toString();
-    }
-    
-    // Return the created service
-    return data;
-  } catch (error) {
-    console.error('Error creating service:', error);
-    throw error;
-  }
+  // Create the service
+  const createdService = await fetchAPI<Service>('services', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    },
+    body: JSON.stringify(newService)
+  });
+  
+  return createdService;
 };
 
 export const getBusinessBookingLinks = async (businessId?: string) => {

@@ -22,15 +22,15 @@
   ],
   "services": [
     {
-      "name": "Haicut123",
+      "name": "Haicut123321",
       "description": "Haicut123",
       "duration": 60,
       "price": 200,
-      "category": "Massage",
+      "category": "new category",
       "imageUrl": "/images/services/massage.jpg",
       "businessId": "1742230321916",
       "id": "1742230995581",
-      "_timestamp": 1742233980836
+      "_timestamp": 1742240473726
     },
     {
       "name": "men haicut",
@@ -47,10 +47,11 @@
       "description": "ManicureManicure123",
       "duration": 60,
       "price": 2000,
-      "category": "Massage",
+      "category": "Haicut",
       "imageUrl": "/images/services/manicure.jpg",
       "businessId": "1742230321916",
-      "id": "1742232528534"
+      "id": "1742232528534",
+      "_timestamp": 1742239926979
     }
   ],
   "bookingLinks": [],

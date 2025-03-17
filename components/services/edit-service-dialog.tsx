@@ -53,7 +53,7 @@ interface EditServiceDialogProps {
   service: Service;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (updatedService: Service) => void;
 }
 
 export function EditServiceDialog({ 
@@ -142,42 +142,20 @@ export function EditServiceDialog({
         imageUrl: data.imageUrl,
       };
       
-      // Update in API
-      await updateService(service.id, updatedServiceData);
+      // Update in API and get the updated service
+      const updatedService = await updateService(service.id, updatedServiceData);
       
-      // Also update the selectedService in the parent component to force UI updates
-      if (service && service.id) {
-        // Pass the updated service back to the parent
-        // @ts-ignore - we know this exists in the parent component
-        service.name = data.name;
-        // @ts-ignore
-        service.description = data.description;
-        // @ts-ignore
-        service.duration = data.duration;
-        // @ts-ignore
-        service.price = data.price;
-        // @ts-ignore
-        service.category = data.category;
-        // @ts-ignore
-        service.imageUrl = data.imageUrl;
-      }
-      
+      console.log('[EditServiceDialog] Service updated successfully:', updatedService);
       toast.success('Service updated successfully');
       
       // Force close the dialog
       onOpenChange(false);
       
-      // Wait for dialog to close then refresh data with multiple attempts
-      setTimeout(() => {
-        console.log('[EditServiceDialog] Triggering data refresh');
-        onSuccess();
-        
-        // Try again after a longer delay as insurance
-        setTimeout(() => {
-          console.log('[EditServiceDialog] Triggering second refresh for insurance');
-          onSuccess();
-        }, 1000);
-      }, 300);
+      // Make a deep copy of the updated service to ensure React detects the change
+      const serviceCopy = JSON.parse(JSON.stringify(updatedService)) as Service;
+      
+      // Update the UI by passing the updated service to the parent component
+      onSuccess(serviceCopy);
     } catch (error) {
       console.error('[EditServiceDialog] Error updating service:', error);
       toast.error('Failed to update service');

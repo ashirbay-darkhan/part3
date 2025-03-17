@@ -41,14 +41,20 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('name');
   
-  // Add force refreshing mechanism
-  const [refreshKey, setRefreshKey] = useState(0);
+  // Add force refreshing mechanism with timestamp
+  const [refreshKey, setRefreshKey] = useState(Date.now());
   
   // Force re-render when services change
   useEffect(() => {
-    console.log('[ServicesList] Services changed, forcing refresh');
-    setRefreshKey(prev => prev + 1);
+    console.log('[ServicesList] Services changed, forcing refresh', services.length);
+    setRefreshKey(Date.now());
   }, [services]);
+
+  // Force refresh when manually triggered
+  const forceRefresh = () => {
+    console.log('[ServicesList] Manual refresh triggered');
+    setRefreshKey(Date.now());
+  };
 
   // Filter services by search term
   const filteredServices = services.filter(service => 
@@ -126,7 +132,7 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setRefreshKey(prev => prev + 1)}
+            onClick={forceRefresh}
             title="Force refresh display"
           >
             <RefreshCw className="h-4 w-4" />
@@ -151,84 +157,87 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedServices.map((service) => (
-            <Card key={`${service.id}-${refreshKey}`} className="overflow-hidden">
-              {service.imageUrl ? (
-                <div className="w-full h-48 overflow-hidden">
-                  <img 
-                    src={`${service.imageUrl}?${refreshKey}`} 
-                    alt={service.name} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                  <ImageIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" />
-                </div>
-              )}
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{service.name}</CardTitle>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Open menu">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(service)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-red-600 focus:text-red-600"
-                        onClick={() => onDelete(service)}
+          {sortedServices.map((service) => {
+            console.log('[ServicesList] Rendering service:', service.id, service.name);
+            return (
+              <Card key={`${service.id}-${refreshKey}-${service.name}`} className="overflow-hidden">
+                {service.imageUrl ? (
+                  <div className="w-full h-48 overflow-hidden">
+                    <img 
+                      src={`${service.imageUrl}?${service.id}-${refreshKey}`} 
+                      alt={service.name} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <ImageIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+                  </div>
+                )}
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg">{service.name}</CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Open menu">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(service)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => onDelete(service)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="flex gap-2 items-center mt-1">
+                    {service.category && (
+                      <Badge 
+                        variant="secondary" 
+                        className="text-xs font-normal"
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="flex gap-2 items-center mt-1">
-                  {service.category && (
-                    <Badge 
-                      variant="secondary" 
-                      className="text-xs font-normal"
-                    >
-                      {service.category}
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground line-clamp-2 h-10">
-                  {service.description || 'No description provided'}
-                </p>
-                <div className="flex justify-between mt-4 text-sm">
-                  <div className="flex items-center">
-                    <Clock className="mr-1 h-4 w-4 text-muted-foreground" />
-                    <span>{service.duration} min</span>
+                        {service.category}
+                      </Badge>
+                    )}
                   </div>
-                  <div className="flex items-center font-medium">
-                    <DollarSign className="mr-1 h-4 w-4 text-muted-foreground" />
-                    <span>{service.price.toLocaleString()} ₸</span>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground line-clamp-2 h-10">
+                    {service.description || 'No description provided'}
+                  </p>
+                  <div className="flex justify-between mt-4 text-sm">
+                    <div className="flex items-center">
+                      <Clock className="mr-1 h-4 w-4 text-muted-foreground" />
+                      <span>{service.duration} min</span>
+                    </div>
+                    <div className="flex items-center font-medium">
+                      <DollarSign className="mr-1 h-4 w-4 text-muted-foreground" />
+                      <span>{service.price.toLocaleString()} ₸</span>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-              <CardFooter className="border-t bg-muted/50 pt-3">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-xs h-8"
-                  onClick={() => onEdit(service)}
-                >
-                  <Pencil className="mr-2 h-3 w-3" />
-                  Edit Service
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                </CardContent>
+                <CardFooter className="border-t bg-muted/50 pt-3">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs h-8"
+                    onClick={() => onEdit(service)}
+                  >
+                    <Pencil className="mr-2 h-3 w-3" />
+                    Edit Service
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

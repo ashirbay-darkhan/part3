@@ -526,6 +526,7 @@ export const createService = (service: Omit<Service, 'id'>) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(service)
   });
+  
 export const updateService = async (id: string, service: Partial<Service>): Promise<Service> => {
   console.log('[updateService] Updating service with ID:', id, 'Data:', service);
   
@@ -533,7 +534,7 @@ export const updateService = async (id: string, service: Partial<Service>): Prom
   const timestamp = Date.now();
   
   // Update the service
-  const updatedService = await fetchAPI<Service>(`services/${id}`, {
+  await fetchAPI<Service>(`services/${id}`, {
     method: 'PATCH',
     headers: { 
       'Content-Type': 'application/json',
@@ -547,7 +548,7 @@ export const updateService = async (id: string, service: Partial<Service>): Prom
     })
   });
   
-  // Fetch the service again to ensure we have the latest data
+  // Always fetch the service again after update to ensure we have the latest data
   try {
     const refreshedService = await fetchAPI<Service>(`services/${id}?_=${Date.now()}`, {
       headers: {
@@ -559,10 +560,17 @@ export const updateService = async (id: string, service: Partial<Service>): Prom
     console.log('[updateService] Re-fetched service after update:', refreshedService);
     return refreshedService;
   } catch (error) {
-    console.warn('[updateService] Failed to re-fetch service, returning original response:', error);
+    console.warn('[updateService] Failed to re-fetch service, fetching all services');
+    // If direct fetch fails, get all services and find the one we need
+    const allServices = await fetchAPI<Service[]>(`services?_=${Date.now()}`);
+    const updatedService = allServices.find(s => s.id === id);
+    if (!updatedService) {
+      throw new Error(`Failed to find updated service with ID ${id}`);
+    }
     return updatedService;
   }
 };
+
 export const deleteService = (id: string) => 
   fetchAPI(`services/${id}`, { method: 'DELETE' });
 

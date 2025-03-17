@@ -135,13 +135,16 @@ export default function ServicesPage() {
     console.log('[ServicesPage] Service updated with data:', updatedService);
     
     if (updatedService && updatedService.id) {
-      // Create a new services array with the updated service
+      // Create a deep copy of the services array to trigger React's state update
       const updatedServices = services.map(service => 
         service.id === updatedService.id ? {...updatedService} : service
       );
       
       // Update services state with the new array
       setServices(updatedServices);
+      
+      // Force a re-render by changing the refreshKey
+      setRefreshKey(prevKey => prevKey + 1);
       
       // Clear the selected service
       setSelectedService(null);

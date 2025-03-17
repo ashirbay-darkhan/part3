@@ -160,7 +160,7 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
           {sortedServices.map((service) => {
             console.log('[ServicesList] Rendering service:', service.id, service.name);
             return (
-              <Card key={`${service.id}-${refreshKey}-${service.name}`} className="overflow-hidden">
+              <Card key={`service-${service.id}-${refreshKey}`} className="overflow-hidden">
                 {service.imageUrl ? (
                   <div className="w-full h-48 overflow-hidden">
                     <img 

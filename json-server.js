@@ -35,7 +35,7 @@ server.post('/login', (req, res) => {
 });
 
 server.post('/register', (req, res) => {
-  const { email, password, name, businessName } = req.body;
+  const { email, password, name, businessName, avatar } = req.body;
   
   // Read the current database
   const db = JSON.parse(fs.readFileSync('db.json', 'utf8'));
@@ -49,6 +49,9 @@ server.post('/register', (req, res) => {
   // Create business ID
   const businessId = Date.now().toString();
   
+  // Generate avatar if not provided
+  const userAvatar = avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=B91C1C&color=fff`;
+  
   // Create new user (no password hashing for simplicity)
   const newUser = {
     id: Date.now().toString(),
@@ -58,7 +61,8 @@ server.post('/register', (req, res) => {
     role: 'admin',
     businessId,
     businessName,
-    isVerified: false
+    isVerified: false,
+    avatar: userAvatar
   };
   
   // Add to users array

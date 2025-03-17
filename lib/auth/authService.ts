@@ -112,6 +112,11 @@ export const register = async (userData: {
   businessName: string;
 }): Promise<BusinessUser> => {
   try {
+    // Generate avatar based on name
+    const backgroundColors = ['B91C1C', 'A16207', '047857', '1D4ED8', '7E22CE', 'BE185D'];
+    const randomColor = backgroundColors[Math.floor(Math.random() * backgroundColors.length)];
+    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=${randomColor}&color=fff`;
+    
     // Try to register via POST endpoint first
     try {
       const response = await fetch('http://localhost:3001/register', {
@@ -119,7 +124,10 @@ export const register = async (userData: {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(userData)
+        body: JSON.stringify({
+          ...userData,
+          avatar: avatarUrl
+        })
       });
       
       if (response.ok) {
@@ -177,7 +185,8 @@ export const register = async (userData: {
       businessId,
       businessName: userData.businessName,
       role: 'admin',
-      isVerified: true
+      isVerified: true,
+      avatar: avatarUrl
     };
     
     const userResponse = await fetch('http://localhost:3001/users', {

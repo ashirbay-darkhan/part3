@@ -527,47 +527,60 @@ export const createService = (service: Omit<Service, 'id'>) =>
     body: JSON.stringify(service)
   });
   
+// Replace the existing updateService function in lib/api.ts with this enhanced version
 export const updateService = async (id: string, service: Partial<Service>): Promise<Service> => {
   console.log('[updateService] Updating service with ID:', id, 'Data:', service);
   
   // Add timestamp to body to make each update unique
   const timestamp = Date.now();
   
-  // Update the service
-  await fetchAPI<Service>(`services/${id}`, {
-    method: 'PATCH',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    },
-    body: JSON.stringify({
-      ...service,
-      _timestamp: timestamp // Add timestamp to bust any caching
-    })
-  });
-  
-  // Always fetch the service again after update to ensure we have the latest data
   try {
-    const refreshedService = await fetchAPI<Service>(`services/${id}?_=${Date.now()}`, {
-      headers: {
+    // Update the service with a timestamp to force changes to be recognized
+    const updatedService = await fetchAPI<Service>(`services/${id}`, {
+      method: 'PATCH',
+      headers: { 
+        'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache', 
+        'Pragma': 'no-cache',
         'Expires': '0'
-      }
+      },
+      body: JSON.stringify({
+        ...service,
+        _timestamp: timestamp // Add timestamp to bust any caching
+      })
     });
-    console.log('[updateService] Re-fetched service after update:', refreshedService);
-    return refreshedService;
-  } catch (error) {
-    console.warn('[updateService] Failed to re-fetch service, fetching all services');
-    // If direct fetch fails, get all services and find the one we need
-    const allServices = await fetchAPI<Service[]>(`services?_=${Date.now()}`);
-    const updatedService = allServices.find(s => s.id === id);
-    if (!updatedService) {
-      throw new Error(`Failed to find updated service with ID ${id}`);
+    
+    // Short delay to ensure the database has time to update
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Fetch the service again to ensure we have the latest data
+    try {
+      const refreshedService = await fetchAPI<Service>(`services/${id}?_=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache', 
+          'Expires': '0'
+        }
+      });
+      console.log('[updateService] Re-fetched service after update:', refreshedService);
+      
+      // Ensure the timestamp is carried forward
+      return {
+        ...refreshedService,
+        _timestamp: timestamp
+      };
+    } catch (error) {
+      console.warn('[updateService] Failed to re-fetch service, returning original response:', error);
+      
+      // Add the timestamp to the original response
+      return {
+        ...updatedService,
+        _timestamp: timestamp
+      };
     }
-    return updatedService;
+  } catch (error) {
+    console.error('[updateService] Error updating service:', error);
+    throw error;
   }
 };
 

@@ -42,15 +42,26 @@ export default function ServicesPage() {
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0); // Used to trigger refetching
 
-  // Fetch services data
+  // Replace your existing services fetch useEffect with this improved version
   useEffect(() => {
     const fetchServices = async () => {
       setIsServicesLoading(true);
       try {
         console.log('[ServicesPage] Fetching services, refreshKey:', refreshKey);
-        const data = await getBusinessServices();
-        console.log('[ServicesPage] Fetched services:', data);
-        setServices(data);
+        
+        // Try direct fetch first for freshest data
+        const directData = await fetchServicesDirectly();
+        
+        if (directData.length > 0) {
+          console.log('[ServicesPage] Using directly fetched services:', directData);
+          setServices(directData);
+        } else {
+          // Fall back to regular API if direct fetch returns no data
+          console.log('[ServicesPage] Direct fetch returned no data, trying API');
+          const apiData = await getBusinessServices();
+          console.log('[ServicesPage] Fetched services from API:', apiData);
+          setServices(apiData);
+        }
       } catch (error) {
         console.error('Failed to fetch services:', error);
         toast.error('Failed to load services');
@@ -90,25 +101,55 @@ export default function ServicesPage() {
     fetchCategories();
   }, [refreshKey]); // Refetch when refreshKey changes
 
-  // Refresh data helper function that can be called from anywhere
-  const refreshData = () => {
-    console.log('[ServicesPage] Refreshing data');
+  // Replace your existing refreshData function with this one
+const refreshData = async () => {
+  console.log('[ServicesPage] Refreshing data');
+  
+  // Show loading state and clear existing data
+  setIsServicesLoading(true);
+  setServices([]);
+  
+  // Show refresh toast
+  const toastId = toast.loading('Refreshing data...', {
+    position: 'bottom-right'
+  });
+  
+  try {
+    // First try the direct fetch method for immediate fresh data
+    const freshServices = await fetchServicesDirectly();
     
-    // Show loading state
-    setIsServicesLoading(true);
+    // Update with fresh data
+    setServices(freshServices);
+    setIsServicesLoading(false);
     
-    // Clear existing data first to avoid stale UI
-    setServices([]);
+    // Update toast
+    toast.success('Data refreshed successfully', {
+      id: toastId,
+      duration: 2000
+    });
+    
+    // Force re-fetch by updating the refresh key (as backup)
+    setRefreshKey(prevKey => prevKey + 1);
+  } catch (error) {
+    console.error('[ServicesPage] Error refreshing data:', error);
+    
+    // Fall back to the regular method if direct fetch fails
+    const fallbackId = toast.loading('Trying alternative refresh method...', {
+      position: 'bottom-right'
+    });
     
     // Force re-fetch by updating the refresh key
     setRefreshKey(prevKey => prevKey + 1);
     
-    // Show refresh toast
-    toast.success('Refreshing data...', {
-      duration: 1000,
-      position: 'bottom-right'
-    });
-  };
+    // Update toast
+    setTimeout(() => {
+      toast.success('Data refresh complete', {
+        id: fallbackId,
+        duration: 2000
+      });
+    }, 1000);
+  }
+};
 
   // Add a manual refresh button to the page header
   const handleManualRefresh = () => {
@@ -131,33 +172,107 @@ export default function ServicesPage() {
     setIsEditServiceOpen(true);
   };
 
-  const handleServiceUpdated = (updatedService: Service) => {
+  // Add this function to your services/page.tsx file
+// This ensures we get the freshest data directly from db.json
+
+const fetchServicesDirectly = async (): Promise<Service[]> => {
+  try {
+    console.log('[ServicesPage] Directly fetching services from db.json');
+    
+    // Get the business ID from localStorage
+    const businessId = localStorage.getItem('business_id');
+    if (!businessId) {
+      console.error('[ServicesPage] No business ID found in localStorage');
+      return [];
+    }
+    
+    // Direct fetch with cache busting
+    const response = await fetch(`http://localhost:3001/services?_=${Date.now()}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch services: ${response.status}`);
+    }
+    
+    // Parse all services
+    const allServices = await response.json();
+    console.log('[ServicesPage] All services from direct fetch:', allServices);
+    
+    // Filter for this business
+    const businessServices = allServices.filter((service: any) => 
+      service.businessId && service.businessId.toString() === businessId.toString()
+    );
+    
+    console.log('[ServicesPage] Filtered services for business:', businessServices);
+    return businessServices;
+  } catch (error) {
+    console.error('[ServicesPage] Direct fetch error:', error);
+    toast.error('Failed to refresh services data');
+    return [];
+  }
+};
+
+  // Replace your handleServiceUpdated function with this enhanced version
+  const handleServiceUpdated = async (updatedService: Service) => {
     console.log('[ServicesPage] Service updated with data:', updatedService);
     
-    if (updatedService && updatedService.id) {
-      // Create a deep copy of the services array to trigger React's state update
-      const updatedServices = services.map(service => 
-        service.id === updatedService.id ? {...updatedService} : service
-      );
+    // Clear the selected service
+    setSelectedService(null);
+    
+    // Show a loading toast
+    const toastId = toast.loading('Updating service list...', {
+      position: 'bottom-right'
+    });
+    
+    try {
+      // Wait for a short time to ensure DB has been updated
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Update services state with the new array
-      setServices(updatedServices);
+      // Get fresh data directly from db.json
+      const freshServices = await fetchServicesDirectly();
       
-      // Force a re-render by changing the refreshKey
-      setRefreshKey(prevKey => prevKey + 1);
+      // Update the state with fresh data
+      setServices([]); // Clear first
+      setTimeout(() => {
+        setServices(freshServices);
+        
+        // Update toast
+        toast.success('Service updated successfully', {
+          id: toastId,
+          duration: 2000
+        });
+      }, 50);
+    } catch (error) {
+      console.error('[ServicesPage] Error refreshing after update:', error);
       
-      // Clear the selected service
-      setSelectedService(null);
-      
-      // Show success toast
-      toast.success('Service updated successfully', {
-        id: 'service-update-success',
-        duration: 2000
-      });
-    } else {
-      console.warn('[ServicesPage] Received invalid updated service:', updatedService);
-      // Fallback to full refresh if we don't have a valid updated service
-      refreshData();
+      // Fall back to simple UI update if fetch fails
+      if (updatedService && updatedService.id) {
+        const updatedServices = services.map(service => 
+          service.id === updatedService.id ? { ...updatedService } : { ...service }
+        );
+        
+        setServices([]); // Clear first
+        setTimeout(() => {
+          setServices(updatedServices);
+          
+          // Update toast
+          toast.success('Service updated in UI (fallback mode)', {
+            id: toastId,
+            duration: 2000
+          });
+        }, 50);
+      } else {
+        // Force full refresh as last resort
+        toast.error('Falling back to full refresh', {
+          id: toastId
+        });
+        setTimeout(() => refreshData(), 100);
+      }
     }
   };
 

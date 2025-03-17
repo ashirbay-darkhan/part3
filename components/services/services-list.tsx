@@ -44,9 +44,11 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
   // Add force refreshing mechanism with timestamp
   const [refreshKey, setRefreshKey] = useState(Date.now());
   
-  // Force re-render when services change
   useEffect(() => {
     console.log('[ServicesList] Services changed, forcing refresh', services.length);
+    // Use a more robust way to check for changes
+    const servicesJson = JSON.stringify(services.map(s => s.id + s.name + s._timestamp));
+    console.log('[ServicesList] Services fingerprint:', servicesJson);
     setRefreshKey(Date.now());
   }, [services]);
 
@@ -136,6 +138,41 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
             title="Force refresh display"
           >
             <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              console.log('[ServicesList] Debug direct refresh triggered');
+              // Create a visual indication that we're refreshing
+              const toast = globalThis.toast?.loading ? 
+                globalThis.toast.loading('Debug refresh in progress...') : null;
+              
+              // Clear any cached data
+              localStorage.removeItem('servicesCache');
+              
+              // Attempt direct fetch from the json-server
+              fetch('http://localhost:3001/services?_=' + Date.now(), {
+                headers: {
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'Expires': '0'
+                }
+              })
+              .then(res => res.json())
+              .then(data => {
+                console.log('[ServicesList] Debug direct fetch result:', data);
+                if (toast) globalThis.toast.success('Debug data fetched, check console', { id: toast });
+              })
+              .catch(err => {
+                console.error('[ServicesList] Debug fetch error:', err);
+                if (toast) globalThis.toast.error('Debug fetch failed', { id: toast });
+              });
+            }}
+            title="Debug refresh (direct DB fetch)"
+            className="h-9 w-9 p-0 ml-1"
+          >
+            <span className="text-xs font-mono">DB</span>
           </Button>
         </div>
       </div>

@@ -10,6 +10,20 @@
       "businessName": "Pied piper",
       "isVerified": false,
       "serviceIds": []
+    },
+    {
+      "name": "gilfoile",
+      "email": "gilfoile@gmail.com",
+      "serviceIds": [
+        "1742231297430",
+        "1742232528534",
+        "1742230995581"
+      ],
+      "businessId": "1742230321916",
+      "businessName": "Pied piper",
+      "password": "password123",
+      "id": "1742244079841",
+      "isVerified": true
     }
   ],
   "businesses": [
@@ -22,7 +36,7 @@
   ],
   "services": [
     {
-      "name": "Haicut",
+      "name": "123",
       "description": "Haicut123",
       "duration": 60,
       "price": 200,
@@ -30,7 +44,7 @@
       "imageUrl": "/images/services/massage.jpg",
       "businessId": "1742230321916",
       "id": "1742230995581",
-      "_timestamp": 1742241328647
+      "_timestamp": 1742244166358
     },
     {
       "name": "men haicut",
@@ -52,11 +66,47 @@
       "businessId": "1742230321916",
       "id": "1742232528534",
       "_timestamp": 1742239926979
+    },
+    {
+      "name": "New service",
+      "description": "New service",
+      "duration": 60,
+      "price": 123,
+      "category": "Manicure",
+      "imageUrl": "",
+      "businessId": "1742230321916",
+      "_timestamp": 1742244200555,
+      "id": "1742244200559"
     }
   ],
   "bookingLinks": [],
-  "appointments": [],
-  "clients": [],
+  "appointments": [
+    {
+      "clientId": 1,
+      "serviceId": "1742230995581",
+      "employeeId": "1742244079841",
+      "date": "2025-03-19",
+      "startTime": "12:00",
+      "endTime": "13:00",
+      "duration": 60,
+      "status": "Pending",
+      "price": 200,
+      "businessId": "1742230321916",
+      "id": 1
+    }
+  ],
+  "clients": [
+    {
+      "name": "Haicut",
+      "phone": "+77474894939",
+      "email": "",
+      "notes": "",
+      "businessId": "1742230321916",
+      "totalVisits": 0,
+      "lastVisit": "2025-03-17T20:42:17.781Z",
+      "id": 1
+    }
+  ],
   "serviceCategories": [
     {
       "name": "Manicure",

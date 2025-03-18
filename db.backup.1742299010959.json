@@ -63,10 +63,10 @@
       "duration": 60,
       "price": 2000,
       "category": "category",
-      "imageUrl": "/images/services/massage.jpg",
+      "imageUrl": "/images/services/manicure.jpg",
       "businessId": "1742230321916",
       "id": "1742232528534",
-      "_timestamp": 1742299010916
+      "_timestamp": 1742298843392
     },
     {
       "name": "Massage",

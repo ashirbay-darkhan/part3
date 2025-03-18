@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Clock,
   DollarSign,
@@ -8,7 +8,7 @@ import {
   Pencil,
   Trash2,
   ImageIcon,
-  RefreshCw,
+  Search,
 } from 'lucide-react';
 import { Service } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -41,67 +41,36 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('name');
   
-  // Add force refreshing mechanism with timestamp
-  const [refreshKey, setRefreshKey] = useState(Date.now());
-  
-  useEffect(() => {
-    console.log('[ServicesList] Services changed, forcing refresh', services.length);
-    // Use a more robust way to check for changes
-    const servicesJson = JSON.stringify(services.map(s => s.id + s.name + s._timestamp));
-    console.log('[ServicesList] Services fingerprint:', servicesJson);
-    setRefreshKey(Date.now());
-  }, [services]);
-
-  // Force refresh when manually triggered
-  const forceRefresh = () => {
-    console.log('[ServicesList] Manual refresh triggered');
-    setRefreshKey(Date.now());
-  };
-
-  // Filter services by search term
-  const filteredServices = services.filter(service => 
-    service.name.toLowerCase().includes(search.toLowerCase()) ||
-    service.description?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // Sort services based on sortBy value
-  const sortedServices = [...filteredServices].sort((a, b) => {
-    switch (sortBy) {
-      case 'name':
-        return a.name.localeCompare(b.name);
-      case 'price-asc':
-        return a.price - b.price;
-      case 'price-desc':
-        return b.price - a.price;
-      case 'duration':
-        return a.duration - b.duration;
-      default:
-        return 0;
-    }
-  });
+  // Use memoization to prevent unnecessary re-filtering and re-sorting
+  const filteredAndSortedServices = useMemo(() => {
+    // First filter the services
+    const filtered = services.filter(service => 
+      service.name.toLowerCase().includes(search.toLowerCase()) ||
+      (service.description?.toLowerCase() || '').includes(search.toLowerCase())
+    );
+    
+    // Then sort them
+    return [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'price-asc':
+          return a.price - b.price;
+        case 'price-desc':
+          return b.price - a.price;
+        case 'duration':
+          return a.duration - b.duration;
+        default:
+          return 0;
+      }
+    });
+  }, [services, search, sortBy]);
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="animate-pulse overflow-hidden">
-            <div className="h-48 bg-slate-200 dark:bg-slate-700 w-full"></div>
-            <CardHeader className="pb-2">
-              <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-2"></div>
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full mb-3"></div>
-              <div className="flex justify-between mb-2">
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
-              <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-8"></div>
-            </CardFooter>
-          </Card>
+          <ServiceCardSkeleton key={i} />
         ))}
       </div>
     );
@@ -116,6 +85,7 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-3"
+            aria-label="Search services"
           />
         </div>
         <div className="flex gap-2">
@@ -130,153 +100,161 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
               <SelectItem value="duration">Duration</SelectItem>
             </SelectContent>
           </Select>
-          
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={forceRefresh}
-            title="Force refresh display"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline" 
-            size="sm"
-            onClick={() => {
-              console.log('[ServicesList] Debug direct refresh triggered');
-              // Create a visual indication that we're refreshing
-              const toast = globalThis.toast?.loading ? 
-                globalThis.toast.loading('Debug refresh in progress...') : null;
-              
-              // Clear any cached data
-              localStorage.removeItem('servicesCache');
-              
-              // Attempt direct fetch from the json-server
-              fetch('http://localhost:3001/services?_=' + Date.now(), {
-                headers: {
-                  'Cache-Control': 'no-cache, no-store, must-revalidate',
-                  'Pragma': 'no-cache',
-                  'Expires': '0'
-                }
-              })
-              .then(res => res.json())
-              .then(data => {
-                console.log('[ServicesList] Debug direct fetch result:', data);
-                if (toast) globalThis.toast.success('Debug data fetched, check console', { id: toast });
-              })
-              .catch(err => {
-                console.error('[ServicesList] Debug fetch error:', err);
-                if (toast) globalThis.toast.error('Debug fetch failed', { id: toast });
-              });
-            }}
-            title="Debug refresh (direct DB fetch)"
-            className="h-9 w-9 p-0 ml-1"
-          >
-            <span className="text-xs font-mono">DB</span>
-          </Button>
         </div>
       </div>
 
-      {sortedServices.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-4xl mb-3">🔍</div>
-          <h3 className="text-lg font-medium mb-2">No services found</h3>
-          <p className="text-slate-500 dark:text-slate-400 mb-6">
-            {services.length === 0
-              ? "You haven't added any services yet."
-              : "No services match your search criteria."}
-          </p>
-          {search && (
-            <Button variant="outline" onClick={() => setSearch('')}>
-              Clear Search
-            </Button>
-          )}
-        </div>
+      {filteredAndSortedServices.length === 0 ? (
+        <EmptyState 
+          hasServices={services.length > 0} 
+          searchTerm={search}
+          onClearSearch={() => setSearch('')}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedServices.map((service) => {
-            console.log('[ServicesList] Rendering service:', service.id, service.name);
-            return (
-              <Card key={`service-${service.id}-${refreshKey}`} className="overflow-hidden">
-                {service.imageUrl ? (
-                  <div className="w-full h-48 overflow-hidden">
-                    <img 
-                      src={`${service.imageUrl}?${service.id}-${refreshKey}`} 
-                      alt={service.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                    <ImageIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" />
-                  </div>
-                )}
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{service.name}</CardTitle>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Open menu">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(service)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-red-600 focus:text-red-600"
-                          onClick={() => onDelete(service)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <div className="flex gap-2 items-center mt-1">
-                    {service.category && (
-                      <Badge 
-                        variant="secondary" 
-                        className="text-xs font-normal"
-                      >
-                        {service.category}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2 h-10">
-                    {service.description || 'No description provided'}
-                  </p>
-                  <div className="flex justify-between mt-4 text-sm">
-                    <div className="flex items-center">
-                      <Clock className="mr-1 h-4 w-4 text-muted-foreground" />
-                      <span>{service.duration} min</span>
-                    </div>
-                    <div className="flex items-center font-medium">
-                      <DollarSign className="mr-1 h-4 w-4 text-muted-foreground" />
-                      <span>{service.price.toLocaleString()} ₸</span>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="border-t bg-muted/50 pt-3">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-xs h-8"
-                    onClick={() => onEdit(service)}
-                  >
-                    <Pencil className="mr-2 h-3 w-3" />
-                    Edit Service
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })}
+          {filteredAndSortedServices.map((service) => (
+            <ServiceCard 
+              key={`service-${service.id}`} 
+              service={service} 
+              onEdit={onEdit} 
+              onDelete={onDelete} 
+            />
+          ))}
         </div>
       )}
     </div>
+  );
+}
+
+// Separated components for better code organization and reusability
+
+function ServiceCardSkeleton() {
+  return (
+    <Card className="animate-pulse overflow-hidden">
+      <div className="h-48 bg-slate-200 dark:bg-slate-700 w-full"></div>
+      <CardHeader className="pb-2">
+        <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-2"></div>
+        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+      </CardHeader>
+      <CardContent>
+        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-full mb-3"></div>
+        <div className="flex justify-between mb-2">
+          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-8"></div>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function EmptyState({ hasServices, searchTerm, onClearSearch }: { 
+  hasServices: boolean, 
+  searchTerm: string,
+  onClearSearch: () => void 
+}) {
+  return (
+    <div className="text-center py-12">
+      <div className="text-4xl mb-3">🔍</div>
+      <h3 className="text-lg font-medium mb-2">No services found</h3>
+      <p className="text-slate-500 dark:text-slate-400 mb-6">
+        {hasServices
+          ? "No services match your search criteria."
+          : "You haven't added any services yet."}
+      </p>
+      {searchTerm && (
+        <Button variant="outline" onClick={onClearSearch}>
+          Clear Search
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ServiceCard({ service, onEdit, onDelete }: {
+  service: Service,
+  onEdit: (service: Service) => void,
+  onDelete: (service: Service) => void
+}) {
+  return (
+    <Card className="overflow-hidden">
+      {service.imageUrl ? (
+        <div className="w-full h-48 overflow-hidden">
+          <img 
+            src={service.imageUrl} 
+            alt={service.name} 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+      ) : (
+        <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+          <ImageIcon className="h-12 w-12 text-slate-300 dark:text-slate-600" />
+        </div>
+      )}
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg">{service.name}</CardTitle>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0" aria-label="Open menu">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(service)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600"
+                onClick={() => onDelete(service)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="flex gap-2 items-center mt-1">
+          {service.category && (
+            <Badge 
+              variant="secondary" 
+              className="text-xs font-normal"
+            >
+              {service.category}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground line-clamp-2 h-10">
+          {service.description || 'No description provided'}
+        </p>
+        <div className="flex justify-between mt-4 text-sm">
+          <div className="flex items-center">
+            <Clock className="mr-1 h-4 w-4 text-muted-foreground" />
+            <span>{service.duration} min</span>
+          </div>
+          <div className="flex items-center font-medium">
+            <DollarSign className="mr-1 h-4 w-4 text-muted-foreground" />
+            <span>{service.price.toLocaleString()} ₸</span>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="border-t bg-muted/50 pt-3">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="text-xs h-8"
+          onClick={() => onEdit(service)}
+        >
+          <Pencil className="mr-2 h-3 w-3" />
+          Edit Service
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }

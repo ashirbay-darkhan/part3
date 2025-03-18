@@ -529,13 +529,27 @@ export const createService = (service: Omit<Service, 'id'>) =>
   
 // Replace the existing updateService function in lib/api.ts with this enhanced version
 export const updateService = async (id: string, service: Partial<Service>): Promise<Service> => {
-  console.log('[updateService] Updating service with ID:', id, 'Data:', service);
+  console.log('[updateService] Updating service with ID:', id, 'Data:', JSON.stringify(service));
   
-  // Add timestamp to body to make each update unique
+  // Add timestamp to force cache invalidation
   const timestamp = Date.now();
   
   try {
-    // Update the service with a timestamp to force changes to be recognized
+    // Fetch current service first to ensure we have all data
+    const currentService = await fetchAPI<Service>(`services/${id}?_=${timestamp}`, {
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    
+    // Merge current service with updates
+    const updatedData = {
+      ...currentService,
+      ...service,
+      _timestamp: timestamp
+    };
+    
+    console.log('[updateService] Merged data for update:', JSON.stringify(updatedData));
+    
+    // Send update request
     const updatedService = await fetchAPI<Service>(`services/${id}`, {
       method: 'PATCH',
       headers: { 
@@ -544,40 +558,11 @@ export const updateService = async (id: string, service: Partial<Service>): Prom
         'Pragma': 'no-cache',
         'Expires': '0'
       },
-      body: JSON.stringify({
-        ...service,
-        _timestamp: timestamp // Add timestamp to bust any caching
-      })
+      body: JSON.stringify(updatedData)
     });
     
-    // Short delay to ensure the database has time to update
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    // Fetch the service again to ensure we have the latest data
-    try {
-      const refreshedService = await fetchAPI<Service>(`services/${id}?_=${Date.now()}`, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache', 
-          'Expires': '0'
-        }
-      });
-      console.log('[updateService] Re-fetched service after update:', refreshedService);
-      
-      // Ensure the timestamp is carried forward
-      return {
-        ...refreshedService,
-        _timestamp: timestamp
-      };
-    } catch (error) {
-      console.warn('[updateService] Failed to re-fetch service, returning original response:', error);
-      
-      // Add the timestamp to the original response
-      return {
-        ...updatedService,
-        _timestamp: timestamp
-      };
-    }
+    console.log('[updateService] Server response:', JSON.stringify(updatedService));
+    return updatedService;
   } catch (error) {
     console.error('[updateService] Error updating service:', error);
     throw error;

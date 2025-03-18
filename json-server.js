@@ -57,14 +57,7 @@ const safeReadDb = () => {
 // Helper function to safely write to the db.json file
 const safeWriteDb = (db) => {
   try {
-    // Create a backup before writing
-    const timestamp = Date.now();
-    const backupPath = `db.backup.${timestamp}.json`;
-    
-    // Only create a backup if the file exists
-    if (fs.existsSync('db.json')) {
-      fs.copyFileSync('db.json', backupPath);
-    }
+    // Removed backup creation code
     
     // Write the updated database
     fs.writeFileSync('db.json', JSON.stringify(db, null, 2));

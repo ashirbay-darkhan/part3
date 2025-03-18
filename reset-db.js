@@ -112,11 +112,6 @@ try {
     clients: []
   };
   
-  // Create a backup of the current db
-  const backupPath = path.join(__dirname, `db.backup.${Date.now()}.json`);
-  fs.writeFileSync(backupPath, rawData);
-  console.log(`Backup created at ${backupPath}`);
-  
   // Write the clean database
   fs.writeFileSync(dbPath, JSON.stringify(cleanDb, null, 2));
   

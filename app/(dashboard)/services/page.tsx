@@ -12,10 +12,11 @@ import { DeleteServiceDialog } from '@/components/services/delete-service-dialog
 import { CreateCategoryDialog } from '@/components/services/create-category-dialog';
 import { EditCategoryDialog } from '@/components/services/edit-category-dialog';
 import { DeleteCategoryDialog } from '@/components/services/delete-category-dialog';
-import { getBusinessServices, getBusinessServiceCategories } from '@/lib/api';
+import { getBusinessServices, getBusinessServiceCategories, getServices } from '@/lib/api';
 import { Service, ServiceCategory } from '@/types';
 import { toast } from 'sonner';
 import { DebugPanel } from '@/components/debug-panel';
+import { log } from 'console';
 
 export default function ServicesPage() {
   // Main tabs for switching between services and categories
@@ -40,48 +41,58 @@ export default function ServicesPage() {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [isServicesLoading, setIsServicesLoading] = useState(true);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0); // Used to trigger refetching
 
   // Replace your existing services fetch useEffect with this improved version
   useEffect(() => {
     const fetchServices = async () => {
       setIsServicesLoading(true);
       try {
-        console.log('[ServicesPage] Fetching services, refreshKey:', refreshKey);
+        // Try to get the business ID
+        const businessId = localStorage.getItem('business_id');
+        let servicesData = null;
         
-        // Try direct fetch first for freshest data
-        const directData = await fetchServicesDirectly();
-        
-        if (directData.length > 0) {
-          console.log('[ServicesPage] Using directly fetched services:', directData);
-          setServices(directData);
+        if (businessId) {
+          // Try to get data from localStorage first
+          const storageKey = `services_${businessId}`;
+          const cachedServices = localStorage.getItem(storageKey);
+          
+          if (cachedServices) {
+            // Use the cached data if available
+            servicesData = JSON.parse(cachedServices);
+            console.log('[ServicesPage] Using cached services from localStorage:', servicesData);
+          } else {
+            // No cached data, fetch from API
+            servicesData = await getBusinessServices();
+            console.log('[ServicesPage] Fetched services from API:', servicesData);
+            
+            // Save to localStorage for future use
+            localStorage.setItem(storageKey, JSON.stringify(servicesData));
+            console.log('[ServicesPage] Saved services to localStorage');
+          }
         } else {
-          // Fall back to regular API if direct fetch returns no data
-          console.log('[ServicesPage] Direct fetch returned no data, trying API');
-          const apiData = await getBusinessServices();
-          console.log('[ServicesPage] Fetched services from API:', apiData);
-          setServices(apiData);
+          // No business ID, fall back to API
+          servicesData = await getBusinessServices();
+          console.log('[ServicesPage] No business ID found, fetched services from API');
         }
+        
+        setServices(servicesData || []);
       } catch (error) {
         console.error('Failed to fetch services:', error);
         toast.error('Failed to load services');
+        setServices([]);
       } finally {
         setIsServicesLoading(false);
       }
     };
 
-    // Get URL query parameters to detect if page was loaded with a timestamp
-    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const hasTimestamp = urlParams?.has('t');
-    
-    // If there's a timestamp in the URL, clean it up by removing query params
-    if (hasTimestamp && typeof window !== 'undefined') {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-    }
-
     fetchServices();
-  }, [refreshKey]); // Refetch when refreshKey changes
+  }, []);
+
+  // Remove the problematic effect that causes infinite loop
+  useEffect(() => {
+    console.log('[ServicesPage] Services state updated:', services);
+    // Remove the setServices(services) line that causes infinite loop
+  }, [services]);
 
   // Fetch categories data
   useEffect(() => {
@@ -99,61 +110,15 @@ export default function ServicesPage() {
     };
 
     fetchCategories();
-  }, [refreshKey]); // Refetch when refreshKey changes
+  }, []);
 
-  // Replace your existing refreshData function with this one
-const refreshData = async () => {
-  console.log('[ServicesPage] Refreshing data');
-  
-  // Show loading state and clear existing data
-  setIsServicesLoading(true);
-  setServices([]);
-  
-  // Show refresh toast
-  const toastId = toast.loading('Refreshing data...', {
-    position: 'bottom-right'
-  });
-  
-  try {
-    // First try the direct fetch method for immediate fresh data
-    const freshServices = await fetchServicesDirectly();
-    
-    // Update with fresh data
-    setServices(freshServices);
-    setIsServicesLoading(false);
-    
-    // Update toast
-    toast.success('Data refreshed successfully', {
-      id: toastId,
-      duration: 2000
-    });
-    
-    // Force re-fetch by updating the refresh key (as backup)
-    setRefreshKey(prevKey => prevKey + 1);
-  } catch (error) {
-    console.error('[ServicesPage] Error refreshing data:', error);
-    
-    // Fall back to the regular method if direct fetch fails
-    const fallbackId = toast.loading('Trying alternative refresh method...', {
-      position: 'bottom-right'
-    });
-    
-    // Force re-fetch by updating the refresh key
-    setRefreshKey(prevKey => prevKey + 1);
-    
-    // Update toast
-    setTimeout(() => {
-      toast.success('Data refresh complete', {
-        id: fallbackId,
-        duration: 2000
-      });
-    }, 1000);
-  }
-};
+  // Simple refresh function
+  const refreshData = () => {
+    window.location.reload();
+  };
 
   // Add a manual refresh button to the page header
   const handleManualRefresh = () => {
-    console.log('[ServicesPage] Manual refresh triggered');
     refreshData();
   };
 
@@ -163,7 +128,6 @@ const refreshData = async () => {
   };
 
   const handleServiceCreated = () => {
-    console.log('[ServicesPage] Service created, refreshing');
     refreshData();
   };
 
@@ -172,107 +136,60 @@ const refreshData = async () => {
     setIsEditServiceOpen(true);
   };
 
-  // Add this function to your services/page.tsx file
-// This ensures we get the freshest data directly from db.json
-
-const fetchServicesDirectly = async (): Promise<Service[]> => {
-  try {
-    console.log('[ServicesPage] Directly fetching services from db.json');
-    
-    // Get the business ID from localStorage
-    const businessId = localStorage.getItem('business_id');
-    if (!businessId) {
-      console.error('[ServicesPage] No business ID found in localStorage');
-      return [];
-    }
-    
-    // Direct fetch with cache busting
-    const response = await fetch(`http://localhost:3001/services?_=${Date.now()}`, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch services: ${response.status}`);
-    }
-    
-    // Parse all services
-    const allServices = await response.json();
-    console.log('[ServicesPage] All services from direct fetch:', allServices);
-    
-    // Filter for this business
-    const businessServices = allServices.filter((service: any) => 
-      service.businessId && service.businessId.toString() === businessId.toString()
-    );
-    
-    console.log('[ServicesPage] Filtered services for business:', businessServices);
-    return businessServices;
-  } catch (error) {
-    console.error('[ServicesPage] Direct fetch error:', error);
-    toast.error('Failed to refresh services data');
-    return [];
-  }
-};
-
-  // Replace your handleServiceUpdated function with this enhanced version
-  const handleServiceUpdated = async (updatedService: Service) => {
+  const handleServiceUpdated = (updatedService: Service) => {
     console.log('[ServicesPage] Service updated with data:', updatedService);
     
     // Clear the selected service
     setSelectedService(null);
     
-    // Show a loading toast
-    const toastId = toast.loading('Updating service list...', {
-      position: 'bottom-right'
-    });
-    
-    try {
-      // Wait for a short time to ensure DB has been updated
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Get fresh data directly from db.json
-      const freshServices = await fetchServicesDirectly();
-      
-      // Update the state with fresh data
-      setServices([]); // Clear first
-      setTimeout(() => {
-        setServices(freshServices);
-        
-        // Update toast
-        toast.success('Service updated successfully', {
-          id: toastId,
-          duration: 2000
-        });
-      }, 50);
-    } catch (error) {
-      console.error('[ServicesPage] Error refreshing after update:', error);
-      
-      // Fall back to simple UI update if fetch fails
-      if (updatedService && updatedService.id) {
-        const updatedServices = services.map(service => 
-          service.id === updatedService.id ? { ...updatedService } : { ...service }
+    // Update local state immediately with the data we already have
+    if (updatedService && updatedService.id) {
+      // Replace the service in our list
+      setServices(currentServices => {
+        // Create the updated services list
+        const updatedServices = currentServices.map(service => 
+          service.id === updatedService.id ? updatedService : service
         );
         
-        setServices([]); // Clear first
-        setTimeout(() => {
-          setServices(updatedServices);
-          
-          // Update toast
-          toast.success('Service updated in UI (fallback mode)', {
-            id: toastId,
-            duration: 2000
-          });
-        }, 50);
-      } else {
-        // Force full refresh as last resort
-        toast.error('Falling back to full refresh', {
-          id: toastId
-        });
-        setTimeout(() => refreshData(), 100);
-      }
+        // Also update in localStorage to maintain state consistency
+        try {
+          // Get business ID
+          const businessId = localStorage.getItem('business_id');
+          if (businessId) {
+            // Store updated services in localStorage
+            const storageKey = `services_${businessId}`;
+            localStorage.setItem(storageKey, JSON.stringify(updatedServices));
+            console.log('[ServicesPage] Updated services in localStorage');
+            
+            // Also update any cached API data if it exists
+            const apiCacheKey = `api_cache_services_${businessId}`;
+            if (localStorage.getItem(apiCacheKey)) {
+              localStorage.setItem(apiCacheKey, JSON.stringify(updatedServices));
+              console.log('[ServicesPage] Updated API cache in localStorage');
+            }
+          }
+        } catch (error) {
+          console.error('[ServicesPage] Error updating localStorage:', error);
+        }
+        
+        return updatedServices;
+      });
+
+      console.log('[ServicesPage] Services after update:', services);
+      
+      // Show success toast
+      toast.success('Service updated', { duration: 2000 });
+      
+      // // Reload the page after a short delay to ensure database consistency
+      // setTimeout(() => {
+      //   refreshData();
+      // }, 500);
+            
+    } else {
+      // Handle invalid service update
+      console.error('[ServicesPage] Invalid service update received:', updatedService);
+      toast.error('Failed to update service - invalid data received');
+      refreshData(); // Force refresh to ensure UI is in sync with server
     }
   };
 
@@ -282,7 +199,6 @@ const fetchServicesDirectly = async (): Promise<Service[]> => {
   };
 
   const handleServiceDeleted = () => {
-    console.log('[ServicesPage] Service deleted, refreshing');
     refreshData();
   };
 
@@ -292,7 +208,6 @@ const fetchServicesDirectly = async (): Promise<Service[]> => {
   };
 
   const handleCategoryCreated = () => {
-    console.log('[ServicesPage] Category created, refreshing');
     refreshData();
   };
 
@@ -302,7 +217,6 @@ const fetchServicesDirectly = async (): Promise<Service[]> => {
   };
 
   const handleCategoryUpdated = () => {
-    console.log('[ServicesPage] Category updated, refreshing');
     refreshData();
   };
 
@@ -312,7 +226,6 @@ const fetchServicesDirectly = async (): Promise<Service[]> => {
   };
 
   const handleCategoryDeleted = () => {
-    console.log('[ServicesPage] Category deleted, refreshing');
     refreshData();
   };
 

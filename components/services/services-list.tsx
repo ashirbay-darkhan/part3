@@ -37,17 +37,25 @@ interface ServicesListProps {
   onDelete: (service: Service) => void;
 }
 
+// Optimized file keys to prevent unnecessary re-renders
+const getCardKey = (service: Service) => {
+  // Create a stable key that only changes when the service actually changes
+  return `service-${service.id}-${service.name.replace(/\s+/g, '-')}-${service.duration}-${service.price}`;
+};
+
 export function ServicesList({ services, isLoading, onEdit, onDelete }: ServicesListProps) {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('name');
   
   // Use memoization to prevent unnecessary re-filtering and re-sorting
   const filteredAndSortedServices = useMemo(() => {
-    // First filter the services
-    const filtered = services.filter(service => 
-      service.name.toLowerCase().includes(search.toLowerCase()) ||
-      (service.description?.toLowerCase() || '').includes(search.toLowerCase())
-    );
+    // First filter the services - lowercase both sides for case-insensitive search
+    const searchLower = search.toLowerCase();
+    const filtered = services.filter(service => {
+      const nameMatch = service.name.toLowerCase().includes(searchLower);
+      const descMatch = service.description?.toLowerCase()?.includes(searchLower) || false;
+      return nameMatch || descMatch;
+    });
     
     // Then sort them
     return [...filtered].sort((a, b) => {
@@ -66,11 +74,34 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
     });
   }, [services, search, sortBy]);
 
+  // Memoized renderEmptyState to prevent recreation on each render
+  const renderEmptyState = useMemo(() => {
+    return (
+      <EmptyState 
+        hasServices={services.length > 0} 
+        searchTerm={search}
+        onClearSearch={() => setSearch('')}
+      />
+    );
+  }, [services.length, search]);
+  
+  // Memoized renderServiceCard for consistency
+  const renderServiceCards = useMemo(() => {
+    return filteredAndSortedServices.map(service => (
+      <ServiceCard 
+        key={getCardKey(service)}
+        service={service} 
+        onEdit={onEdit} 
+        onDelete={onDelete} 
+      />
+    ));
+  }, [filteredAndSortedServices, onEdit, onDelete]);
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <ServiceCardSkeleton key={i} />
+          <ServiceCardSkeleton key={`skeleton-${i}`} />
         ))}
       </div>
     );
@@ -103,22 +134,9 @@ export function ServicesList({ services, isLoading, onEdit, onDelete }: Services
         </div>
       </div>
 
-      {filteredAndSortedServices.length === 0 ? (
-        <EmptyState 
-          hasServices={services.length > 0} 
-          searchTerm={search}
-          onClearSearch={() => setSearch('')}
-        />
-      ) : (
+      {filteredAndSortedServices.length === 0 ? renderEmptyState : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAndSortedServices.map((service) => (
-            <ServiceCard 
-              key={`service-${service.id}`} 
-              service={service} 
-              onEdit={onEdit} 
-              onDelete={onDelete} 
-            />
-          ))}
+          {renderServiceCards}
         </div>
       )}
     </div>

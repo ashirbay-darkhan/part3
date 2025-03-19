@@ -35,17 +35,23 @@ export function DeleteServiceDialog({
     setIsDeleting(true);
     
     try {
-      console.log('Deleting service:', service.id);
+      // Call API to delete the service
       await deleteService(service.id);
       
-      toast.success('Service deleted successfully');
-      onOpenChange(false);
+      // Show toast
+      toast.success(`Service "${service.name}" deleted successfully`);
       
-      // Notify parent component about the deletion
+      // Close dialog and notify parent
+      onOpenChange(false);
       onSuccess();
     } catch (error) {
-      toast.error('Failed to delete service');
-      console.error('Failed to delete service:', error);
+      // Extract error message
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unknown error occurred';
+        
+      // Show toast
+      toast.error('Failed to delete service. Please try again.');
     } finally {
       setIsDeleting(false);
     }

@@ -40,7 +40,7 @@
       "description": "Manicure",
       "duration": 60,
       "price": 2000,
-      "category": "new category",
+      "category": "Manicure",
       "imageUrl": "/images/services/manicure.jpg",
       "businessId": "1742230321916",
       "id": "1742230995581",
@@ -48,14 +48,14 @@
     },
     {
       "name": "Haicut",
-      "description": "Haicut",
+      "description": "Haicut lorem ipsum",
       "duration": 60,
-      "price": 123,
+      "price": 1000,
       "category": "Manicure",
       "imageUrl": "/images/services/massage.jpg",
       "businessId": "1742230321916",
       "id": "1742231297430",
-      "_timestamp": 1742298762320
+      "_timestamp": 1742300169971
     },
     {
       "name": "new service",
@@ -66,7 +66,7 @@
       "imageUrl": "/images/services/massage.jpg",
       "businessId": "1742230321916",
       "id": "1742232528534",
-      "_timestamp": 1742299010916
+      "_timestamp": 1742299010915
     },
     {
       "name": "Massage",
@@ -94,6 +94,20 @@
       "price": 200,
       "businessId": "1742230321916",
       "id": 1
+    },
+    {
+      "clientId": 1,
+      "serviceId": "1742230995581",
+      "employeeId": "1742244079841",
+      "date": "2025-03-20",
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "duration": 60,
+      "status": "Pending",
+      "price": 2000,
+      "businessId": "1742230321916",
+      "comment": "asd",
+      "id": 2
     }
   ],
   "clients": [

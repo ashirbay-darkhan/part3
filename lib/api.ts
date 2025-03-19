@@ -152,7 +152,6 @@ function loadFallbackDataFromStorage() {
             (FALLBACK_DATA as any)[key] = parsedData[key];
           }
         });
-        console.log('Loaded fallback data from localStorage');
       }
     }
   } catch (error) {
@@ -268,111 +267,143 @@ async function checkServerAvailability(): Promise<boolean> {
   }
 }
 
-// Enhanced fetchAPI function with fallback
-async function fetchAPI<T>(
-  endpoint: string, 
-  options?: RequestInit
-): Promise<T> {
-  // Parse entity type and filters from endpoint
-  const [entityName, ...rest] = endpoint.split('?')[0].split('/');
-  const id = rest.length > 0 ? rest[0] : null;
+// Function to check server availability and fetch data, with local fallback
+export async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  // Make sure endpoint starts with a slash
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   
-  // Parse query parameters
-  const queryParams: Record<string, any> = {};
-  if (endpoint.includes('?')) {
-    const queryString = endpoint.split('?')[1];
-    queryString.split('&').forEach(param => {
-      const [key, value] = param.split('=');
-      queryParams[key] = value;
-    });
+  // Parse the endpoint to get the entity type (e.g., /users -> users)
+  let entityName = normalizedEndpoint.split('/')[1]?.split('?')[0];
+  
+  // Handle endpoints like /services/123 by extracting the base entity
+  if (entityName && /^\d+$/.test(entityName)) {
+    entityName = normalizedEndpoint.split('/')[0];
   }
   
-  // Use fallback immediately if server is known to be down
+  // For businesses specifically, extract the right entity name
+  if (normalizedEndpoint.startsWith('/businesses/')) {
+    entityName = 'businesses';
+  }
+  
+  // Check if server is available or use cached result
   if (!isServerAvailable) {
-    console.log(`Using fallback for ${endpoint} (server down)`);
-    return handleFallback<T>(entityName, id, options, queryParams);
+    if (serverCheckTimeout === null) {
+      // Schedule a check to see if server is back online
+      serverCheckTimeout = setTimeout(async () => {
+        isServerAvailable = await checkServerAvailability();
+        serverCheckTimeout = null;
+      }, 30000); // Check every 30 seconds
+    }
+    
+    // Use fallback data
+    return getFallbackForEndpoint<T>(normalizedEndpoint, entityName as keyof typeof FALLBACK_DATA);
   }
+  
+  // Get auth token from localStorage
+  let headers = new Headers(options.headers);
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token && !headers.has('Authorization')) {
+      headers.append('Authorization', `Bearer ${token}`);
+    }
+  }
+  
+  // Prepare the fetch options with headers
+  const fetchOptions = {
+    ...options,
+    headers
+  };
   
   try {
-    const url = `${API_URL}/${endpoint}`;
+    // Use the normalized endpoint with API URL
+    const response = await fetch(`${API_URL}${normalizedEndpoint}`, fetchOptions);
     
-    // Check if we're in a browser environment before accessing localStorage
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...(options?.headers || {})
-    };
-    
-    console.log(`Attempting to fetch from ${endpoint}`);
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    });
+    // Handle 404 errors for specific entities more gracefully
+    if (response.status === 404) {
+      // Special handling for business lookups - return fallback business data
+      if (normalizedEndpoint.startsWith('/businesses/')) {
+        const businessId = normalizedEndpoint.split('/')[2]?.split('?')[0];
+        if (businessId) {
+          // Try to find the business in our fallback data
+          const fallbackBusiness = getFallbackItem('businesses', businessId);
+          if (fallbackBusiness) {
+            return fallbackBusiness as unknown as T;
+          }
+          
+          // If not found in fallback data, return the first business as default
+          const businesses = FALLBACK_DATA.businesses;
+          if (businesses && businesses.length > 0) {
+            return businesses[0] as unknown as T;
+          }
+        }
+      }
+      
+      // For other entities on 404, return an empty result without failing
+      if (entityName && ['services', 'clients', 'appointments', 'bookingLinks'].includes(entityName)) {
+        return (Array.isArray(FALLBACK_DATA[entityName as keyof typeof FALLBACK_DATA]) ? [] : {}) as unknown as T;
+      }
+    }
     
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    return await response.json();
+    const data = await response.json();
+    return data as T;
   } catch (error) {
-    console.error(`Error fetching from ${endpoint}:`, error);
+    console.error(`Error fetching from ${normalizedEndpoint}:`, error);
     
-    // On first error, check if server is available
-    if (isServerAvailable) {
-      await checkServerAvailability();
+    // Mark server as unavailable if we can't connect
+    isServerAvailable = false;
+    
+    if (serverCheckTimeout === null) {
+      // Schedule a check to see if server is back online
+      serverCheckTimeout = setTimeout(async () => {
+        isServerAvailable = await checkServerAvailability();
+        serverCheckTimeout = null;
+      }, 30000); // Check every 30 seconds
     }
     
-    // Fallback to mock data
-    console.log(`Using fallback for ${endpoint}`);
-    return handleFallback<T>(entityName, id, options, queryParams);
+    // Return fallback data
+    return getFallbackForEndpoint<T>(normalizedEndpoint, entityName as keyof typeof FALLBACK_DATA);
   }
 }
 
-// Handle fallback based on HTTP method and entity
-function handleFallback<T>(
-  entityName: string, 
-  id: string | null, 
-  options?: RequestInit,
-  queryParams?: Record<string, any>
-): T {
-  // Make sure entity exists in our fallback data
-  const entityKey = entityName as keyof typeof FALLBACK_DATA;
-  if (!FALLBACK_DATA[entityKey]) {
-    console.error(`No fallback data for ${entityName}`);
+// Function to handle fallback data for endpoints
+function getFallbackForEndpoint<T>(endpoint: string, entityName: keyof typeof FALLBACK_DATA): T {
+  // Ensure we have a clean endpoint to parse (remove leading slash if present)
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
+  
+  // Parse endpoint components
+  const parts = cleanEndpoint.split('/').filter(Boolean);
+  const baseName = parts[0];
+  const id = parts.length > 1 ? parts[1]?.split('?')[0] : null;
+  
+  // Parse query parameters if any
+  const queryParams: Record<string, any> = {};
+  if (cleanEndpoint.includes('?')) {
+    const queryString = cleanEndpoint.split('?')[1];
+    queryString.split('&').forEach(param => {
+      const [key, value] = param.split('=');
+      if (key && value) {
+        queryParams[key] = value;
+      }
+    });
+  }
+  
+  // Handle different HTTP methods
+  if (!entityName || !FALLBACK_DATA[entityName]) {
+    console.error(`No fallback data for ${entityName || 'undefined entity'}`);
     return [] as unknown as T;
   }
   
-  const method = options?.method || 'GET';
-  
-  // Handle different HTTP methods
-  switch (method) {
-    case 'GET':
-      if (id) {
-        return getFallbackItem<T>(entityKey, id) as T;
-      } else {
-        return getFallbackData<T>(entityKey, queryParams) as T;
-      }
-    
-    case 'POST':
-      const newItem = JSON.parse(options?.body as string || '{}');
-      return createFallbackItem<T>(entityKey, newItem);
-    
-    case 'PATCH':
-    case 'PUT':
-      if (!id) throw new Error('ID required for update');
-      const updates = JSON.parse(options?.body as string || '{}');
-      return updateFallbackItem<T>(entityKey, id, updates) as T;
-    
-    case 'DELETE':
-      if (!id) throw new Error('ID required for delete');
-      deleteFallbackItem(entityKey, id);
-      return {} as T;
-    
-    default:
-      throw new Error(`Unsupported method: ${method}`);
+  // Return appropriate fallback data
+  if (id) {
+    // For single entity requests
+    return getFallbackItem(entityName, id) as unknown as T;
+  } else {
+    // For collection requests, with filtering
+    return getFallbackData(entityName, queryParams) as unknown as T;
   }
 }
 
@@ -527,47 +558,36 @@ export const createService = (service: Omit<Service, 'id'>) =>
     body: JSON.stringify(service)
   });
   
-// Replace the existing updateService function in lib/api.ts with this enhanced version
-export const updateService = async (id: string, service: Partial<Service>): Promise<Service> => {
-  console.log('[updateService] Updating service with ID:', id, 'Data:', JSON.stringify(service));
-  
-  // Add timestamp to force cache invalidation
-  const timestamp = Date.now();
-  
+// Update service
+export async function updateService(
+  id: string,
+  service: Partial<Service>
+): Promise<Service> {
   try {
-    // Fetch current service first to ensure we have all data
-    const currentService = await fetchAPI<Service>(`services/${id}?_=${timestamp}`, {
-      headers: { 'Cache-Control': 'no-cache' }
-    });
+    // First try to get the current service state
+    const currentService = await fetchAPI<Service>(`/services/${id}?_=${Date.now()}`);
     
-    // Merge current service with updates
+    // Merge the current data with the update data
     const updatedData = {
       ...currentService,
-      ...service,
-      _timestamp: timestamp
+      ...service
     };
     
-    console.log('[updateService] Merged data for update:', JSON.stringify(updatedData));
-    
-    // Send update request
-    const updatedService = await fetchAPI<Service>(`services/${id}`, {
-      method: 'PATCH',
-      headers: { 
+    // Then update it
+    const updatedService = await fetchAPI<Service>(`/services/${id}`, {
+      method: 'PUT',
+      headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
       },
-      body: JSON.stringify(updatedData)
+      body: JSON.stringify(updatedData),
     });
     
-    console.log('[updateService] Server response:', JSON.stringify(updatedService));
     return updatedService;
   } catch (error) {
     console.error('[updateService] Error updating service:', error);
-    throw error;
+    throw new Error(`Failed to update service: ${error instanceof Error ? error.message : String(error)}`);
   }
-};
+}
 
 export const deleteService = (id: string) => 
   fetchAPI(`services/${id}`, { method: 'DELETE' });
@@ -750,36 +770,35 @@ const getBusinessServicesManual = async (businessId: string): Promise<Service[]>
   }
 };
 
-export const createBusinessService = async (serviceData: Partial<Service>): Promise<Service> => {
-  console.log('[createBusinessService] Creating service with data:', serviceData);
-  
-  // Create a timestamp for cache busting
-  const timestamp = Date.now();
-  
-  // Ensure we have a business ID
+// Create a service for the current business
+export async function createBusinessService(
+  serviceData: Omit<Service, 'id' | 'businessId'>
+): Promise<Service> {
+  // Get the current business ID
   const businessId = getBusinessId();
   
-  // Create the complete service object
-  const newService = {
+  // If no business ID, we can't create a service
+  if (!businessId) {
+    throw new Error('No business found. Please create or select a business first.');
+  }
+  
+  // Add the business ID to the service data
+  const fullServiceData = {
     ...serviceData,
-    businessId,
-    _timestamp: timestamp
+    businessId
   };
   
-  // Create the service
-  const createdService = await fetchAPI<Service>('services', {
+  // Create the service using the API
+  const newService = await fetchAPI<Service>('/services', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
     },
-    body: JSON.stringify(newService)
+    body: JSON.stringify(fullServiceData),
   });
   
-  return createdService;
-};
+  return newService;
+}
 
 export const getBusinessBookingLinks = async (businessId?: string) => {
   const bId = businessId || getBusinessId();

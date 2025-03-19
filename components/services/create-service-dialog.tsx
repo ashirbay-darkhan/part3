@@ -110,29 +110,37 @@ export function CreateServiceDialog({
     setIsSubmitting(true);
     
     try {
+      // Validate data before sending to API
+      if (!data.name.trim()) {
+        throw new Error('Service name is required');
+      }
+      
       // Create the service with the form data
-      const newService = await createBusinessService({
-        name: data.name,
-        description: data.description || '',
+      const serviceData = {
+        name: data.name.trim(),
+        description: data.description?.trim() || '',
         duration: data.duration,
         price: data.price,
         category: data.category,
         imageUrl: data.imageUrl || ''
-      });
+      };
+      
+      const newService = await createBusinessService(serviceData);
       
       toast.success('Service created successfully');
       
-      // Reset the form
+      // Reset the form and close the dialog
       reset();
-      
-      // Close the dialog
       onOpenChange(false);
       
-      // Notify parent component about the new service
+      // Notify parent component about the successful creation
       onSuccess();
     } catch (error) {
-      console.error('Failed to create service:', error);
-      toast.error('Failed to create service');
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unknown error occurred';
+        
+      toast.error(`Failed to create service: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }

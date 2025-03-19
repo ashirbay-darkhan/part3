@@ -128,13 +128,7 @@ export function EditServiceDialog({
     setIsSubmitting(true);
     
     try {
-      console.log('[EditServiceDialog] Submitting service update for ID:', service.id);
-      console.log('[EditServiceDialog] Update data:', data);
-      
-      // Create a timestamp to ensure this update is unique
-      const timestamp = Date.now();
-      
-      // Create a new service object with updated data and timestamp
+      // Create a clean updated service object
       const updatedServiceData = {
         ...service, // Keep all existing data
         name: data.name,
@@ -142,32 +136,20 @@ export function EditServiceDialog({
         duration: data.duration,
         price: data.price,
         category: data.category,
-        imageUrl: data.imageUrl,
-        _timestamp: timestamp // Add a timestamp to force updates
+        imageUrl: data.imageUrl
       };
       
       // Update in API and get the updated service
       const updatedService = await updateService(service.id, updatedServiceData);
       
-      console.log('[EditServiceDialog] Service updated successfully:', updatedService);
       toast.success('Service updated successfully');
       
-      // Force close the dialog
+      // Close the dialog
       onOpenChange(false);
       
-      // Make a deep copy of the updated service with the timestamp to ensure React detects the change
-      const serviceCopy = JSON.parse(JSON.stringify({
-        ...updatedService,
-        _timestamp: timestamp
-      })) as Service;
-      
-      // Allow a short delay before calling onSuccess to ensure the dialog closes first
-      setTimeout(() => {
-        // Update the UI by passing the updated service to the parent component
-        onSuccess(serviceCopy);
-      }, 50);
+      // Notify parent component about the successful update
+      onSuccess(updatedService);
     } catch (error) {
-      console.error('[EditServiceDialog] Error updating service:', error);
       toast.error('Failed to update service');
     } finally {
       setIsSubmitting(false);

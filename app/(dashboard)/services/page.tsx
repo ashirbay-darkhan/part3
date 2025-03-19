@@ -16,7 +16,6 @@ import { getBusinessServices, getBusinessServiceCategories, getServices } from '
 import { Service, ServiceCategory } from '@/types';
 import { toast } from 'sonner';
 import { DebugPanel } from '@/components/debug-panel';
-import { log } from 'console';
 
 export default function ServicesPage() {
   // Main tabs for switching between services and categories
@@ -59,25 +58,20 @@ export default function ServicesPage() {
           if (cachedServices) {
             // Use the cached data if available
             servicesData = JSON.parse(cachedServices);
-            console.log('[ServicesPage] Using cached services from localStorage:', servicesData);
           } else {
             // No cached data, fetch from API
             servicesData = await getBusinessServices();
-            console.log('[ServicesPage] Fetched services from API:', servicesData);
             
             // Save to localStorage for future use
             localStorage.setItem(storageKey, JSON.stringify(servicesData));
-            console.log('[ServicesPage] Saved services to localStorage');
           }
         } else {
           // No business ID, fall back to API
           servicesData = await getBusinessServices();
-          console.log('[ServicesPage] No business ID found, fetched services from API');
         }
         
         setServices(servicesData || []);
       } catch (error) {
-        console.error('Failed to fetch services:', error);
         toast.error('Failed to load services');
         setServices([]);
       } finally {
@@ -90,20 +84,42 @@ export default function ServicesPage() {
 
   // Remove the problematic effect that causes infinite loop
   useEffect(() => {
-    console.log('[ServicesPage] Services state updated:', services);
-    // Remove the setServices(services) line that causes infinite loop
+    // Removed logging
   }, [services]);
 
-  // Fetch categories data
+  // Fetch categories data with localStorage caching, similar to services
   useEffect(() => {
     const fetchCategories = async () => {
       setIsCategoriesLoading(true);
       try {
-        const data = await getBusinessServiceCategories();
-        setCategories(data);
+        // Try to get the business ID
+        const businessId = localStorage.getItem('business_id');
+        let categoriesData = null;
+        
+        if (businessId) {
+          // Try to get data from localStorage first
+          const storageKey = `categories_${businessId}`;
+          const cachedCategories = localStorage.getItem(storageKey);
+          
+          if (cachedCategories) {
+            // Use the cached data if available
+            categoriesData = JSON.parse(cachedCategories);
+          } else {
+            // No cached data, fetch from API
+            categoriesData = await getBusinessServiceCategories();
+            
+            // Save to localStorage for future use
+            localStorage.setItem(storageKey, JSON.stringify(categoriesData));
+          }
+        } else {
+          // No business ID, fall back to API
+          categoriesData = await getBusinessServiceCategories();
+        }
+        
+        setCategories(categoriesData || []);
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
         toast.error('Failed to load categories');
+        setCategories([]);
       } finally {
         setIsCategoriesLoading(false);
       }
@@ -112,14 +128,27 @@ export default function ServicesPage() {
     fetchCategories();
   }, []);
 
-  // Simple refresh function
-  const refreshData = () => {
-    window.location.reload();
+  // Enhanced refresh function that intelligently updates cache
+  const refreshData = (forceFetch = false) => {
+    if (forceFetch) {
+      // Clear localStorage cache to ensure fresh data
+      const businessId = localStorage.getItem('business_id');
+      if (businessId) {
+        localStorage.removeItem(`services_${businessId}`);
+        localStorage.removeItem(`categories_${businessId}`);
+        localStorage.removeItem(`api_cache_services_${businessId}`);
+      }
+      // Reload page to fetch fresh data
+      window.location.reload();
+    } else {
+      // Just reload the page
+      window.location.reload();
+    }
   };
 
-  // Add a manual refresh button to the page header
+  // Update manual refresh to support force fetch option
   const handleManualRefresh = () => {
-    refreshData();
+    refreshData(true); // Always force fetch when using the manual refresh button
   };
 
   // Dialog handlers for services
@@ -137,8 +166,6 @@ export default function ServicesPage() {
   };
 
   const handleServiceUpdated = (updatedService: Service) => {
-    console.log('[ServicesPage] Service updated with data:', updatedService);
-    
     // Clear the selected service
     setSelectedService(null);
     
@@ -159,37 +186,27 @@ export default function ServicesPage() {
             // Store updated services in localStorage
             const storageKey = `services_${businessId}`;
             localStorage.setItem(storageKey, JSON.stringify(updatedServices));
-            console.log('[ServicesPage] Updated services in localStorage');
             
             // Also update any cached API data if it exists
             const apiCacheKey = `api_cache_services_${businessId}`;
             if (localStorage.getItem(apiCacheKey)) {
               localStorage.setItem(apiCacheKey, JSON.stringify(updatedServices));
-              console.log('[ServicesPage] Updated API cache in localStorage');
             }
           }
         } catch (error) {
-          console.error('[ServicesPage] Error updating localStorage:', error);
+          // Error handling without logging
         }
         
         return updatedServices;
       });
-
-      console.log('[ServicesPage] Services after update:', services);
       
       // Show success toast
       toast.success('Service updated', { duration: 2000 });
-      
-      // // Reload the page after a short delay to ensure database consistency
-      // setTimeout(() => {
-      //   refreshData();
-      // }, 500);
             
     } else {
       // Handle invalid service update
-      console.error('[ServicesPage] Invalid service update received:', updatedService);
       toast.error('Failed to update service - invalid data received');
-      refreshData(); // Force refresh to ensure UI is in sync with server
+      refreshData(true); // Force refresh with fresh data to ensure UI is in sync with server
     }
   };
 
@@ -260,8 +277,8 @@ export default function ServicesPage() {
             <Button 
               variant="outline" 
               size="icon" 
-              onClick={refreshData}
-              title="Refresh data"
+              onClick={() => refreshData(true)}
+              title="Refresh data (force fetch from server)"
               className="mr-2"
             >
               <RefreshCw className="h-4 w-4" />

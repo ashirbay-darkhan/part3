@@ -4,6 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { BusinessUser, Service } from '@/types';
 import { useAuth } from '@/lib/auth/authContext';
 import { getBusinessServices } from '@/lib/api/staff-service';
+import { Tooltip } from '@/components/ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/components/ui/use-toast';
 
 interface StaffFormProps {
   isOpen: boolean;
@@ -12,14 +15,27 @@ interface StaffFormProps {
   initialData?: BusinessUser | null;
 }
 
+interface StaffFormData {
+  name: string;
+  email: string;
+  avatar: string;
+  phone: string;
+  serviceIds: string[];
+  role?: 'admin' | 'staff';
+}
+
 export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormProps) {
-  // Basic form state
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [avatar, setAvatar] = useState('');
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  // Form state with typed interface
+  const [formData, setFormData] = useState<StaffFormData>({
+    name: '',
+    email: '',
+    avatar: '',
+    phone: '',
+    serviceIds: [],
+  });
   
   // UI state
+  const [activeTab, setActiveTab] = useState('basic');
   const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const { user } = useAuth();
@@ -28,17 +44,21 @@ export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormP
   useEffect(() => {
     if (isOpen) {
       // Reset form with initial data or empty values
-      setName(initialData?.name || '');
-      setEmail(initialData?.email || '');
-      setAvatar(initialData?.avatar || '');
-      setSelectedServices(initialData?.serviceIds || []);
+      setFormData({
+        name: initialData?.name || '',
+        email: initialData?.email || '',
+        avatar: initialData?.avatar || '',
+        phone: initialData?.phone || '',
+        serviceIds: initialData?.serviceIds || [],
+      });
+      setActiveTab('basic');
       
-      // Load services only once when dialog opens
-      if (user?.businessId && services.length === 0) {
+      // Always load services when dialog opens
+      if (user?.businessId) {
         loadServices(user.businessId);
       }
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, user?.businessId]);
   
   // Load services
   const loadServices = async (businessId: string) => {
@@ -47,48 +67,127 @@ export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormP
       setServices(data);
     } catch (error) {
       console.error('Failed to load services:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load services. Please try again.',
+        variant: 'destructive',
+      });
     }
+  };
+
+  // Update form data fields
+  const updateFormField = (field: keyof StaffFormData, value: string | string[]) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Generate avatar URL
   const generateAvatar = () => {
-    if (!name) return;
-    const url = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`;
-    setAvatar(url);
+    if (!formData.name) {
+      // Show a subtle notification if name is empty
+      const avatarPreview = document.getElementById('avatar-preview');
+      if (avatarPreview) {
+        avatarPreview.classList.add('shake-animation');
+        setTimeout(() => avatarPreview.classList.remove('shake-animation'), 500);
+      }
+      return;
+    }
+    
+    // Generate a more professional avatar with consistent styling
+    const colors = ['0369a1', '4f46e5', '0891b2', '7c3aed', '059669'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const url = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=${randomColor}&color=ffffff&bold=true&format=svg`;
+    updateFormField('avatar', url);
   };
 
   // Toggle service selection
   const toggleService = (serviceId: string) => {
-    setSelectedServices(prev => 
-      prev.includes(serviceId)
-        ? prev.filter(id => id !== serviceId)
-        : [...prev, serviceId]
-    );
+    const newServiceIds = formData.serviceIds.includes(serviceId)
+      ? formData.serviceIds.filter(id => id !== serviceId)
+      : [...formData.serviceIds, serviceId];
+    
+    updateFormField('serviceIds', newServiceIds);
+  };
+
+  // Function to select all services in a category
+  const selectCategoryServices = (categoryServices: Service[]) => {
+    const categoryServiceIds = categoryServices.map(service => service.id);
+    
+    // Check if all services in this category are already selected
+    const allSelected = categoryServiceIds.every(id => formData.serviceIds.includes(id));
+    
+    if (allSelected) {
+      // If all are selected, deselect all in this category
+      const newServiceIds = formData.serviceIds.filter(id => !categoryServiceIds.includes(id));
+      updateFormField('serviceIds', newServiceIds);
+    } else {
+      // Otherwise, add all missing services from this category
+      const newServiceIds = [...formData.serviceIds];
+      categoryServiceIds.forEach(id => {
+        if (!newServiceIds.includes(id)) {
+          newServiceIds.push(id);
+        }
+      });
+      updateFormField('serviceIds', newServiceIds);
+    }
+  };
+
+  // Form validation
+  const validateForm = (): boolean => {
+    if (!formData.name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a name",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    if (!formData.email.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter an email address",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    // Simple email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    return true;
   };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name || !email) {
-      alert('Please fill in all required fields');
+    if (!validateForm()) {
       return;
     }
     
     setIsLoading(true);
     
     try {
-      await onSubmit({
-        name,
-        email,
-        avatar,
-        serviceIds: selectedServices
-      });
-      
+      await onSubmit(formData);
       onClose();
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('Failed to save staff member');
+      toast({
+        title: "Error",
+        description: "Failed to save staff member. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -123,9 +222,9 @@ export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormP
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-[2px] animate-in fade-in duration-150">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-200">
-        <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
-          <h2 className="text-xl font-medium text-gray-900">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-xl font-semibold text-gray-900">
             {initialData ? 'Edit Staff Member' : 'Add New Staff Member'}
           </h2>
           <button 
@@ -140,168 +239,264 @@ export function StaffForm({ isOpen, onClose, onSubmit, initialData }: StaffFormP
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Name field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                placeholder="John Doe"
-                required
-              />
-            </div>
-            
-            {/* Email field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                placeholder="john@example.com"
-                required
-              />
-            </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 pt-4 border-b flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="basic">Basic Information</TabsTrigger>
+              <TabsTrigger value="services">Services Offered</TabsTrigger>
+            </TabsList>
           </div>
           
-          {/* Avatar field */}
-          <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex items-center gap-4">
-            <div className="flex-shrink-0">
-              {avatar ? (
-                <img 
-                  src={avatar} 
-                  alt={name || "Staff"} 
-                  className="w-16 h-16 rounded-full object-cover border-2 border-white shadow"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'Staff')}`;
-                  }}
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center justify-center text-blue-600 text-xl font-medium shadow">
-                  {name ? name.charAt(0).toUpperCase() : '?'}
-                </div>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Profile Picture</label>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={avatar}
-                  onChange={(e) => setAvatar(e.target.value)}
-                  className="flex-1 min-w-0 px-3 py-2 bg-white border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                  placeholder="https://example.com/avatar.jpg"
-                />
-                <button
-                  type="button"
-                  onClick={generateAvatar}
-                  className="flex-shrink-0 px-3 py-2 text-xs bg-white text-blue-600 rounded-md border border-blue-200 hover:bg-blue-50 transition-colors font-medium"
-                >
-                  Generate
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          {/* Services selection */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">Services Offered</label>
-              <span className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded font-medium">
-                {selectedServices.length} selected
-              </span>
-            </div>
-            
-            <div className="border border-gray-200 rounded-md overflow-hidden">
-              <div className="max-h-[320px] overflow-y-auto bg-gray-50">
-                {services.length === 0 ? (
-                  <div className="flex items-center justify-center p-4 text-center">
-                    <p className="text-gray-500 text-sm">No services available.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-gray-200">
-                    {servicesByCategory.map((category) => (
-                      <div key={category.name} className="pb-2">
-                        <div className="px-3 py-2 bg-gray-100 sticky top-0 z-10 shadow-sm">
-                          <h3 className="font-medium text-sm text-gray-700">{category.name}</h3>
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <div className="p-6 overflow-y-auto flex-1">
+              <TabsContent value="basic" className="mt-0 space-y-6">
+                <div className="flex flex-col sm:flex-row gap-6">
+                  {/* Avatar Preview */}
+                  <div className="flex flex-col items-center">
+                    <div id="avatar-preview" className="mb-3 relative">
+                      {formData.avatar ? (
+                        <img 
+                          src={formData.avatar} 
+                          alt={formData.name || "Staff"} 
+                          className="w-24 h-24 rounded-full object-cover border-2 border-white shadow-md"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name || 'Staff')}`;
+                          }}
+                        />
+                      ) : (
+                        <div className="w-24 h-24 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-semibold shadow-md">
+                          {formData.name ? formData.name.charAt(0).toUpperCase() : '?'}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 p-2">
-                          {category.services.map((service) => {
-                            const isSelected = selectedServices.includes(service.id);
-                            return (
-                              <div
-                                key={service.id}
-                                className={`p-2.5 rounded cursor-pointer transition-all ${
-                                  isSelected 
-                                    ? 'bg-blue-50 border-blue-200 border shadow-sm' 
-                                    : 'hover:bg-gray-100 border border-transparent'
-                                }`}
-                                onClick={() => toggleService(service.id)}
+                      )}
+                      
+                      <button
+                        type="button"
+                        onClick={generateAvatar}
+                        className="absolute -bottom-1 -right-1 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md hover:bg-blue-700 transition-colors"
+                        title="Generate avatar"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="7 10 12 15 17 10"></polyline>
+                          <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="text-xs text-gray-500 text-center max-w-[160px]">
+                      Avatar will be generated from name, or enter a custom URL below
+                    </div>
+                  </div>
+                  
+                  {/* Basic information fields */}
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name*</label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => updateFormField('name', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="John Doe"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Address*</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => updateFormField('email', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="john@example.com"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => updateFormField('phone', e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="+1 (555) 123-4567"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Avatar URL (optional)</label>
+                    <input
+                      type="url"
+                      value={formData.avatar}
+                      onChange={(e) => updateFormField('avatar', e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      placeholder="https://example.com/avatar.jpg"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="services" className="mt-0">
+                <div className="mb-4 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-base font-medium text-gray-900">Services Offered</h3>
+                    <p className="text-sm text-gray-500">Select which services this staff member can perform</p>
+                  </div>
+                  <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
+                    {formData.serviceIds.length} selected
+                  </span>
+                </div>
+                
+                <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  {services.length === 0 ? (
+                    <div className="flex items-center justify-center p-6 text-center bg-gray-50">
+                      <div>
+                        <p className="text-gray-500 mb-2">No services available</p>
+                        <button
+                          type="button"
+                          className="text-sm text-blue-600 hover:text-blue-800"
+                          onClick={() => user?.businessId && loadServices(user.businessId)}
+                        >
+                          Reload services
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-200">
+                      {servicesByCategory.map((category) => (
+                        <div key={category.name} className="bg-white">
+                          <div 
+                            className="px-4 py-3 bg-gray-50 flex justify-between items-center cursor-pointer hover:bg-gray-100"
+                            onClick={() => selectCategoryServices(category.services)}
+                          >
+                            <h3 className="font-medium text-gray-800">{category.name}</h3>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">
+                                {category.services.filter(s => formData.serviceIds.includes(s.id)).length} 
+                                /{category.services.length}
+                              </span>
+                              <button
+                                type="button"
+                                className="text-xs bg-white text-gray-600 rounded border border-gray-300 px-2 py-0.5 hover:bg-gray-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  selectCategoryServices(category.services);
+                                }}
                               >
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => toggleService(service.id)}
-                                    className="w-3.5 h-3.5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                                  />
-                                  <div className="truncate">
-                                    <div className="font-medium text-sm text-gray-800 truncate">{service.name}</div>
-                                    <div className="text-xs text-gray-500 truncate">
-                                      {service.price ? `₸ ${service.price.toLocaleString()}` : ''} 
-                                      {service.duration ? ` • ${service.duration} min` : ''}
+                                {category.services.every(s => formData.serviceIds.includes(s.id)) 
+                                  ? 'Deselect All' 
+                                  : 'Select All'}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {category.services.map((service) => {
+                              const isSelected = formData.serviceIds.includes(service.id);
+                              return (
+                                <div
+                                  key={service.id}
+                                  className={`p-3 rounded-md border transition-all flex items-center ${
+                                    isSelected 
+                                      ? 'bg-blue-50 border-blue-200' 
+                                      : 'hover:bg-gray-50 border-gray-200'
+                                  }`}
+                                  onClick={() => toggleService(service.id)}
+                                >
+                                  <div className="flex items-center gap-2 w-full">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleService(service.id)}
+                                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded flex-shrink-0"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                      <h4 className="text-sm font-medium text-gray-900 truncate">{service.name}</h4>
+                                      <div className="text-xs text-gray-500 flex gap-2 mt-0.5 flex-wrap">
+                                        <span>{service.duration} min</span>
+                                        <span>₹{(service.price / 100).toFixed(2)}</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center flex-shrink-0 shadow-inner">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                Cancel
+              </button>
+              <div className="flex items-center gap-3">
+                {activeTab === 'basic' ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('services')}
+                    className="px-4 py-2 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    Continue to Services
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('basic')}
+                    className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  >
+                    Back to Info
+                  </button>
                 )}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 text-sm text-white bg-blue-600 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? 'Saving...' : 'Save Staff Member'}
+                </button>
               </div>
             </div>
-          </div>
-          
-          {/* Form buttons */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-sm font-medium"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium shadow-sm"
-              disabled={isLoading}
-            >
-              {isLoading 
-                ? (
-                  <span className="flex items-center">
-                    <svg className="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {initialData ? 'Updating...' : 'Creating...'}
-                  </span>
-                ) 
-                : (initialData ? 'Update Staff' : 'Create Staff')
-              }
-            </button>
-          </div>
-        </form>
+          </form>
+        </Tabs>
       </div>
+      
+      <style jsx global>{`
+        .shake-animation {
+          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        @keyframes shake {
+          10%, 90% {
+            transform: translate3d(-1px, 0, 0);
+          }
+          
+          20%, 80% {
+            transform: translate3d(2px, 0, 0);
+          }
+          
+          30%, 50%, 70% {
+            transform: translate3d(-3px, 0, 0);
+          }
+          
+          40%, 60% {
+            transform: translate3d(3px, 0, 0);
+          }
+        }
+      `}</style>
     </div>
   );
 } 

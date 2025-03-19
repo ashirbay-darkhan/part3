@@ -9,20 +9,22 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  BusinessUser, 
   login as loginService, 
   register as registerService,
   getCurrentUser,
-  logout as logoutService
+  logout as logoutService,
+  updateCurrentUserInStorage
 } from './authService';
+import { BusinessUser } from '@/types';
 
 interface AuthContextType {
   user: BusinessUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: { name: string, email: string, password: string, businessName: string }) => Promise<void>;
+  login: (email: string, password: string) => Promise<BusinessUser>;
+  register: (userData: { name: string, email: string, password: string, businessName: string }) => Promise<BusinessUser>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateCurrentUser: (updatedUser: BusinessUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,13 +80,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
+  // Update current user
+  const updateCurrentUser = (updatedUser: BusinessUser) => {
+    // Only update if this is the current logged-in user
+    if (user && user.id === updatedUser.id) {
+      setUser(updatedUser);
+      updateCurrentUserInStorage(updatedUser);
+    }
+  };
+
   const value = {
     user,
     isLoading,
     login,
     register,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    updateCurrentUser
   };
 
   return (

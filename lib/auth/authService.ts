@@ -2,13 +2,25 @@
 
 import { BusinessUser } from '@/types';
 
-// Login with email/password
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+/**
+ * Handles API errors and provides consistent error messaging
+ */
+class AuthError extends Error {
+  constructor(message: string, public statusCode?: number) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
+
+/**
+ * Login with email/password
+ */
 export const login = async (email: string, password: string): Promise<BusinessUser> => {
   try {
-    console.log('Attempting to login with:', email);
-    
     // Try to fetch from JSON server
-    const response = await fetch(`http://localhost:3001/login`, {
+    const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -17,7 +29,7 @@ export const login = async (email: string, password: string): Promise<BusinessUs
     });
     
     if (!response.ok) {
-      throw new Error('Invalid credentials');
+      throw new AuthError('Invalid credentials', response.status);
     }
     
     const data = await response.json();
@@ -29,7 +41,7 @@ export const login = async (email: string, password: string): Promise<BusinessUs
       
       // Update the user's role in the database
       try {
-        await fetch(`http://localhost:3001/users/${userData.id}`, {
+        await fetch(`${API_URL}/users/${userData.id}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json'
@@ -54,18 +66,18 @@ export const login = async (email: string, password: string): Promise<BusinessUs
     
     // If we get a network error, check if we can use JSON server directly
     try {
-      const userResponse = await fetch(`http://localhost:3001/users?email=${email}`);
+      const userResponse = await fetch(`${API_URL}/users?email=${email}`);
       const users = await userResponse.json();
       
       if (users.length === 0) {
-        throw new Error('User not found');
+        throw new AuthError('User not found', 404);
       }
       
       const user = users[0];
       
       // Simple password check (in a real app, never do this - use hashed passwords and proper auth)
       if (user.password !== password) {
-        throw new Error('Invalid credentials');
+        throw new AuthError('Invalid credentials', 401);
       }
       
       // Ensure user has admin role
@@ -74,7 +86,7 @@ export const login = async (email: string, password: string): Promise<BusinessUs
         
         // Update the user's role in the database
         try {
-          await fetch(`http://localhost:3001/users/${user.id}`, {
+          await fetch(`${API_URL}/users/${user.id}`, {
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json'
@@ -99,12 +111,14 @@ export const login = async (email: string, password: string): Promise<BusinessUs
       return userWithoutPassword;
     } catch (secondaryError) {
       console.error('Secondary login attempt failed:', secondaryError);
-      throw error; // Throw the original error
+      throw error instanceof AuthError ? error : new AuthError('Login failed', 500);
     }
   }
 };
 
-// Register new user
+/**
+ * Register new user
+ */
 export const register = async (userData: {
   name: string;
   email: string;
@@ -119,7 +133,7 @@ export const register = async (userData: {
     
     // Try to register via POST endpoint first
     try {
-      const response = await fetch('http://localhost:3001/register', {
+      const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -143,111 +157,108 @@ export const register = async (userData: {
         return data.user;
       }
     } catch (registerEndpointError) {
-      console.log('Register endpoint not available, using direct API calls');
+      // Fallback to direct API approach
     }
     
     // Fallback to direct API manipulation
     // Check if email already exists
-    const checkResponse = await fetch(`http://localhost:3001/users?email=${userData.email}`);
+    const checkResponse = await fetch(`${API_URL}/users?email=${userData.email}`);
     const existingUsers = await checkResponse.json();
     
     if (existingUsers.length > 0) {
-      throw new Error('Email already in use');
+      throw new AuthError('Email already in use', 409);
     }
     
-    try {
-      // Create a new business ID
-      const businessId = Date.now().toString();
-      
-      // Create new business
-      const businessResponse = await fetch('http://localhost:3001/businesses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: businessId,
-          name: userData.businessName,
-          email: userData.email,
-          ownerId: null // We'll update this after creating the user
-        })
-      });
-      
-      if (!businessResponse.ok) {
-        throw new Error('Failed to create business');
-      }
-      
-      // Create new user
-      const userId = Date.now().toString();
-      const newUser = {
-        id: userId,
-        name: userData.name,
+    // Create a new business ID
+    const businessId = Date.now().toString();
+    
+    // Create new business
+    const businessResponse = await fetch(`${API_URL}/businesses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        id: businessId,
+        name: userData.businessName,
         email: userData.email,
-        password: userData.password, // In a real app, hash this!
-        businessId,
-        businessName: userData.businessName,
-        role: 'admin',
-        isVerified: true,
-        avatar: avatarUrl,
-        serviceIds: [] // Initialize with empty array
-      };
-      
-      const userResponse = await fetch('http://localhost:3001/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newUser)
-      });
-      
-      if (!userResponse.ok) {
-        // If user creation failed, try to clean up the business
-        try {
-          await fetch(`http://localhost:3001/businesses/${businessId}`, {
-            method: 'DELETE'
-          });
-        } catch (cleanupError) {
-          console.error('Failed to clean up business after user creation error:', cleanupError);
-        }
-        
-        throw new Error('Failed to create user');
+        ownerId: null // We'll update this after creating the user
+      })
+    });
+    
+    if (!businessResponse.ok) {
+      throw new AuthError('Failed to create business', businessResponse.status);
+    }
+    
+    // Create new user
+    const userId = Date.now().toString();
+    const newUser = {
+      id: userId,
+      name: userData.name,
+      email: userData.email,
+      password: userData.password, // In a real app, hash this!
+      businessId,
+      businessName: userData.businessName,
+      role: 'admin',
+      isVerified: true,
+      avatar: avatarUrl,
+      serviceIds: [] // Initialize with empty array
+    };
+    
+    const userResponse = await fetch(`${API_URL}/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(newUser)
+    });
+    
+    if (!userResponse.ok) {
+      // If user creation failed, try to clean up the business
+      try {
+        await fetch(`${API_URL}/businesses/${businessId}`, {
+          method: 'DELETE'
+        });
+      } catch (cleanupError) {
+        console.error('Failed to clean up business after user creation error:', cleanupError);
       }
       
-      const createdUser = await userResponse.json();
-      
-      // Update business with owner ID
-      await fetch(`http://localhost:3001/businesses/${businessId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ownerId: createdUser.id
-        })
-      });
-      
-      // Remove password before returning
-      const { password: _, ...userWithoutPassword } = createdUser;
-      
-      // Store user in localStorage
-      localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
-      localStorage.setItem('auth_token', userWithoutPassword.id);
-      
-      // Set a cookie for middleware authentication
-      document.cookie = `auth_token=${userWithoutPassword.id}; path=/; max-age=2592000`; // 30 days
-      
-      return userWithoutPassword;
-    } catch (error) {
-      console.error('Registration process error:', error);
-      throw error;
+      throw new AuthError('Failed to create user', userResponse.status);
     }
+    
+    const createdUser = await userResponse.json();
+    
+    // Update business with owner ID
+    await fetch(`${API_URL}/businesses/${businessId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        ownerId: createdUser.id
+      })
+    });
+    
+    // Remove password before returning
+    const { password: _, ...userWithoutPassword } = createdUser;
+    
+    // Store user in localStorage
+    localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
+    localStorage.setItem('auth_token', userWithoutPassword.id);
+    
+    // Set a cookie for middleware authentication
+    document.cookie = `auth_token=${userWithoutPassword.id}; path=/; max-age=2592000`; // 30 days
+    
+    return userWithoutPassword;
   } catch (error) {
     console.error('Registration error:', error);
-    throw error;
+    throw error instanceof AuthError ? error : new AuthError('Registration failed', 500);
   }
 };
 
-// Get current user
+/**
+ * Get current user from localStorage
+ */
 export const getCurrentUser = (): BusinessUser | null => {
   if (typeof window === 'undefined') return null;
   
@@ -269,7 +280,30 @@ export const getCurrentUser = (): BusinessUser | null => {
   }
 };
 
-// Logout user
+/**
+ * Update current user in localStorage
+ */
+export const updateCurrentUserInStorage = (updatedUser: BusinessUser): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const currentUser = getCurrentUser();
+    
+    // Only update if this is the current logged-in user
+    if (currentUser && currentUser.id === updatedUser.id) {
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      
+      // Verify the update happened correctly
+      const verifyUser = getCurrentUser();
+    }
+  } catch (error) {
+    console.error('Error updating current user in localStorage:', error);
+  }
+};
+
+/**
+ * Logout user
+ */
 export const logout = () => {
   if (typeof window === 'undefined') return;
   

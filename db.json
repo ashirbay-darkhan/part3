@@ -2,27 +2,48 @@
   "users": [
     {
       "id": "1742230321916",
-      "name": "Richard Henricks",
+      "name": "Richard H.",
       "email": "richard@gmail.com",
       "password": "asdasdasd",
       "role": "admin",
       "businessId": "1742230321916",
       "businessName": "Pied piper",
       "isVerified": false,
-      "serviceIds": []
+      "serviceIds": [],
+      "avatar": ""
     },
     {
-      "name": "gilfoile",
+      "name": "Gilfoile H.",
       "email": "gilfoile@gmail.com",
       "serviceIds": [
-        "1742231297430",
+        "1742244200559",
         "1742232528534",
-        "1742230995581"
+        "1742230995581",
+        "1742231297430"
       ],
       "businessId": "1742230321916",
       "businessName": "Pied piper",
       "password": "password123",
       "id": "1742244079841",
+      "isVerified": true,
+      "avatar": "",
+      "role": "staff",
+      "_timestamp": 1742417232467,
+      "phone": ""
+    },
+    {
+      "name": "Jared D.",
+      "email": "jareg@gmail.com",
+      "serviceIds": [
+        "1742232528534",
+        "1742230995581",
+        "1742231297430",
+        "1742244200559"
+      ],
+      "businessId": "1742230321916",
+      "businessName": "Pied piper",
+      "password": "password123",
+      "id": "1742411457578",
       "isVerified": true
     }
   ],

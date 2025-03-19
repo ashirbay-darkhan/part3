@@ -918,11 +918,17 @@ export const getBusinessStaff = async (businessId?: string) => {
       // Fallback: Get all users and filter by businessId
       const allUsers = await getUsers();
       // Filter and cast to BusinessUser since we're filtering for business users
-      return allUsers.filter(user => 
+      const nonAdminStaff = allUsers.filter(user => 
         // Check for properties that indicate a BusinessUser
         'businessId' in user && 
-        user.businessId === bId
+        user.businessId === bId &&
+        user.role !== 'admin'
       ) as BusinessUser[];
+      
+      // Filter out admin users from staff list
+      const filteredStaff = nonAdminStaff.filter(staff => staff.role !== 'admin');
+      
+      return filteredStaff;
     } catch (secondError) {
       console.error('Error fetching business staff with fallback:', secondError);
       return []; // Return empty array instead of throwing

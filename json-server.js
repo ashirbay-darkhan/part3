@@ -5,9 +5,20 @@ const router = jsonServer.router('db.json');
 const middlewares = jsonServer.defaults();
 const fs = require('fs');
 
-// Set default middlewares
+// Enable watching for file changes (reload on db.json changes)
+const watchOptions = {
+  watch: true,
+  delay: 100 // ms
+};
+
+// Set default middlewares with watch enabled
 server.use(middlewares);
 server.use(jsonServer.bodyParser);
+
+// Log when db.json changes are detected
+fs.watch('db.json', (eventType, filename) => {
+  console.log(`\n[${new Date().toLocaleTimeString()}] db.json ${eventType} detected. Server reloading data...`);
+});
 
 // Helper function to generate consistent string IDs
 const generateId = () => {
@@ -345,9 +356,19 @@ server.use((req, res, next) => {
 // Use the default router as fallback
 server.use(customRouter);
 
+// Create a rewriter that enables reloading when db.json changes
+const rewriter = jsonServer.rewriter({
+  '/db': '/db' // Keep this endpoint accessible
+});
+server.use(rewriter);
+
+// Setup the router with watch options to reload when db.json changes
+server.use(router);
+
 // Start server
 const PORT = 3001;
 server.listen(PORT, () => {
   console.log(`JSON Server is running on port ${PORT}`);
   console.log(`Database operations are using safe read/write methods to prevent data corruption`);
+  console.log(`Watching db.json for changes - server will auto-reload data when file changes`);
 });

@@ -41,34 +41,18 @@ export default function ServicesPage() {
   const [isServicesLoading, setIsServicesLoading] = useState(true);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
 
-  // Replace your existing services fetch useEffect with this improved version
+  // Replace your existing services fetch useEffect with this updated version
   useEffect(() => {
     const fetchServices = async () => {
       setIsServicesLoading(true);
       try {
-        // Try to get the business ID
-        const businessId = localStorage.getItem('business_id');
-        let servicesData = null;
+        // Get the business ID for API request parameter
+        const businessIdFromStorage = localStorage.getItem('business_id');
+        // Convert null to undefined to satisfy TypeScript
+        const businessId = businessIdFromStorage || undefined;
         
-        if (businessId) {
-          // Try to get data from localStorage first
-          const storageKey = `services_${businessId}`;
-          const cachedServices = localStorage.getItem(storageKey);
-          
-          if (cachedServices) {
-            // Use the cached data if available
-            servicesData = JSON.parse(cachedServices);
-          } else {
-            // No cached data, fetch from API
-            servicesData = await getBusinessServices();
-            
-            // Save to localStorage for future use
-            localStorage.setItem(storageKey, JSON.stringify(servicesData));
-          }
-        } else {
-          // No business ID, fall back to API
-          servicesData = await getBusinessServices();
-        }
+        // Fetch services directly from the server
+        const servicesData = await getBusinessServices(businessId);
         
         setServices(servicesData || []);
       } catch (error) {
@@ -82,39 +66,13 @@ export default function ServicesPage() {
     fetchServices();
   }, []);
 
-  // Remove the problematic effect that causes infinite loop
-  useEffect(() => {
-    // Removed logging
-  }, [services]);
-
-  // Fetch categories data with localStorage caching, similar to services
+  // Fetch categories data directly from the server
   useEffect(() => {
     const fetchCategories = async () => {
       setIsCategoriesLoading(true);
       try {
-        // Try to get the business ID
-        const businessId = localStorage.getItem('business_id');
-        let categoriesData = null;
-        
-        if (businessId) {
-          // Try to get data from localStorage first
-          const storageKey = `categories_${businessId}`;
-          const cachedCategories = localStorage.getItem(storageKey);
-          
-          if (cachedCategories) {
-            // Use the cached data if available
-            categoriesData = JSON.parse(cachedCategories);
-          } else {
-            // No cached data, fetch from API
-            categoriesData = await getBusinessServiceCategories();
-            
-            // Save to localStorage for future use
-            localStorage.setItem(storageKey, JSON.stringify(categoriesData));
-          }
-        } else {
-          // No business ID, fall back to API
-          categoriesData = await getBusinessServiceCategories();
-        }
+        // Fetch categories directly from the server
+        const categoriesData = await getBusinessServiceCategories();
         
         setCategories(categoriesData || []);
       } catch (error) {
@@ -128,27 +86,46 @@ export default function ServicesPage() {
     fetchCategories();
   }, []);
 
-  // Enhanced refresh function that intelligently updates cache
+  // Enhanced refresh function that simply refetches data
   const refreshData = (forceFetch = false) => {
-    if (forceFetch) {
-      // Clear localStorage cache to ensure fresh data
-      const businessId = localStorage.getItem('business_id');
-      if (businessId) {
-        localStorage.removeItem(`services_${businessId}`);
-        localStorage.removeItem(`categories_${businessId}`);
-        localStorage.removeItem(`api_cache_services_${businessId}`);
+    // Reset loading states
+    setIsServicesLoading(true);
+    setIsCategoriesLoading(true);
+    
+    // Fetch fresh data from the server
+    const fetchServices = async () => {
+      try {
+        const businessIdFromStorage = localStorage.getItem('business_id');
+        // Convert null to undefined to satisfy TypeScript
+        const businessId = businessIdFromStorage || undefined;
+        
+        const servicesData = await getBusinessServices(businessId);
+        setServices(servicesData || []);
+      } catch (error) {
+        toast.error('Failed to refresh services');
+      } finally {
+        setIsServicesLoading(false);
       }
-      // Reload page to fetch fresh data
-      window.location.reload();
-    } else {
-      // Just reload the page
-      window.location.reload();
-    }
+    };
+    
+    const fetchCategories = async () => {
+      try {
+        const categoriesData = await getBusinessServiceCategories();
+        setCategories(categoriesData || []);
+      } catch (error) {
+        toast.error('Failed to refresh categories');
+      } finally {
+        setIsCategoriesLoading(false);
+      }
+    };
+    
+    fetchServices();
+    fetchCategories();
   };
 
-  // Update manual refresh to support force fetch option
+  // Update manual refresh to call refreshData
   const handleManualRefresh = () => {
-    refreshData(true); // Always force fetch when using the manual refresh button
+    refreshData(true);
   };
 
   // Dialog handlers for services
@@ -169,45 +146,15 @@ export default function ServicesPage() {
     // Clear the selected service
     setSelectedService(null);
     
-    // Update local state immediately with the data we already have
-    if (updatedService && updatedService.id) {
-      // Replace the service in our list
-      setServices(currentServices => {
-        // Create the updated services list
-        const updatedServices = currentServices.map(service => 
-          service.id === updatedService.id ? updatedService : service
-        );
-        
-        // Also update in localStorage to maintain state consistency
-        try {
-          // Get business ID
-          const businessId = localStorage.getItem('business_id');
-          if (businessId) {
-            // Store updated services in localStorage
-            const storageKey = `services_${businessId}`;
-            localStorage.setItem(storageKey, JSON.stringify(updatedServices));
-            
-            // Also update any cached API data if it exists
-            const apiCacheKey = `api_cache_services_${businessId}`;
-            if (localStorage.getItem(apiCacheKey)) {
-              localStorage.setItem(apiCacheKey, JSON.stringify(updatedServices));
-            }
-          }
-        } catch (error) {
-          // Error handling without logging
-        }
-        
-        return updatedServices;
-      });
-      
-      // Show success toast
-      toast.success('Service updated', { duration: 2000 });
-            
-    } else {
-      // Handle invalid service update
-      toast.error('Failed to update service - invalid data received');
-      refreshData(true); // Force refresh with fresh data to ensure UI is in sync with server
-    }
+    // Update service in the local state
+    setServices(currentServices => 
+      currentServices.map(service => 
+        service.id === updatedService.id ? updatedService : service
+      )
+    );
+    
+    // Show success toast
+    toast.success('Service updated', { duration: 2000 });
   };
 
   const handleDeleteService = (service: Service) => {

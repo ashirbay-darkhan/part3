@@ -71,9 +71,9 @@
       "name": "Haicut",
       "description": "Haicut lorem ipsum",
       "duration": 60,
-      "price": 1000,
+      "price": 2000,
       "category": "Manicure",
-      "imageUrl": "/images/services/massage.jpg",
+      "imageUrl": "/images/services/haircut.jpg",
       "businessId": "1742230321916",
       "id": "1742231297430",
       "_timestamp": 1742300169971
@@ -124,11 +124,11 @@
       "startTime": "10:00",
       "endTime": "11:00",
       "duration": 60,
-      "status": "Pending",
+      "status": "Arrived",
       "price": 2000,
       "businessId": "1742230321916",
-      "comment": "asd",
-      "id": 2
+      "comment": "comment",
+      "id": "2"
     }
   ],
   "clients": [
